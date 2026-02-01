@@ -1,0 +1,69 @@
+# Qt Creator用户配置
+*.pro.user
+*.pro.user.*
+*.autosave
+
+# 编译产物
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+Makefile
+Makefile.*
+
+# 调试文件
+*.pdb
+*.ilk
+*.exp
+
+# 临时文件
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.old
+*.backup
+
+# 归档文件夹
+archived_docs/
+create_doc/
+
+# IDE文件夹
+.vs/
+.vscode/
+.idea/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+
+# 构建目录
+build/
+build-*/
+debug/
+release/
+Debug/
+Release/
+
+# Qt生成文件
+GeneratedFiles/
+ipch/
+
+# 日志文件
+*.log
+
+# 数据文件（如果不需要版本控制）
+*.csv
+*.dat
+
+# 配置文件（如果包含敏感信息）
+# config.ini
