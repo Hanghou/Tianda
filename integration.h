@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QSerialPortInfo>
 #include <QTimer>
+#include <QTableWidget>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
@@ -113,13 +114,20 @@ private slots:
     // 预设管理槽函数 - 振镜页（光源功率预设）
     void on_btnAddPowerPresetRow_clicked();      // 添加功率预设行
     void on_btnClearPowerPresets_clicked();      // 清空所有功率预设
+    void on_btnMoveUpPowerPreset_clicked();      // 上移功率预设行
+    void on_btnMoveDownPowerPreset_clicked();    // 下移功率预设行
+    void on_btnDeletePowerPreset_clicked();      // 删除功率预设行
     void on_btnStartPowerExecution_clicked();    // 开始执行功率预设
     void on_btnStopPowerExecution_clicked();     // 停止执行功率预设
     void onPowerPresetDelayTimeout();            // 功率预设间隔定时器触发
+    void on_btnConfirmDelayPreset_clicked();     // 确定按钮（振镜页底部执行按钮）
     
     // 预设管理槽函数 - 振镜页（延迟线预设）
     void on_btnAddDelayPresetRowGalvo_clicked();      // 添加延迟预设行
     void on_btnClearDelayPresetsGalvo_clicked();      // 清空所有延迟预设
+    void on_btnMoveUpDelayPresetGalvo_clicked();      // 上移延迟预设行
+    void on_btnMoveDownDelayPresetGalvo_clicked();    // 下移延迟预设行
+    void on_btnDeleteDelayPresetGalvo_clicked();      // 删除延迟预设行
     void on_btnStartDelayExecutionGalvo_clicked();    // 开始执行延迟预设
     void on_btnStopDelayExecutionGalvo_clicked();     // 停止执行延迟预设
     void onDelayPresetDelayTimeoutGalvo();            // 延迟预设间隔定时器触发
@@ -127,13 +135,20 @@ private slots:
     // 预设管理槽函数 - 位移台页（电控与功率预设）
     void on_btnAddPowerPresetRowStage_clicked();      // 添加功率预设行
     void on_btnClearPowerPresetsStage_clicked();      // 清空所有功率预设
+    void on_btnMoveUpPowerPresetStage_clicked();      // 上移功率预设行
+    void on_btnMoveDownPowerPresetStage_clicked();    // 下移功率预设行
+    void on_btnDeletePowerPresetStage_clicked();      // 删除功率预设行
     void on_btnStartPowerExecutionStage_clicked();    // 开始执行功率预设
     void on_btnStopPowerExecutionStage_clicked();     // 停止执行功率预设
     void onPowerPresetDelayTimeoutStage();            // 功率预设间隔定时器触发
+    void on_btnConfirmStagePreset_clicked();          // 确定按钮（位移台页底部执行按钮）
     
     // 预设管理槽函数 - 位移台页（延迟线预设）
     void on_btnAddDelayPresetRow_clicked();      // 添加延迟预设行
     void on_btnClearDelayPresets_clicked();      // 清空所有延迟预设
+    void on_btnMoveUpDelayPreset_clicked();      // 上移延迟预设行
+    void on_btnMoveDownDelayPreset_clicked();    // 下移延迟预设行
+    void on_btnDeleteDelayPreset_clicked();      // 删除延迟预设行
     void on_btnStartDelayExecution_clicked();    // 开始执行延迟预设
     void on_btnStopDelayExecution_clicked();     // 停止执行延迟预设
     void onDelayPresetDelayTimeout();            // 延迟预设间隔定时器触发
@@ -216,10 +231,19 @@ private:
     void addPowerPresetRowStage();               // 添加功率预设行（位移台页）
     void removePowerPresetRow(int row);          // 删除功率预设行
     void removePowerPresetRowStage(int row);     // 删除功率预设行（位移台页）
+    
+    // 表格操作辅助函数
+    void moveRowUp(QTableWidget *table, int row);      // 上移行
+    void moveRowDown(QTableWidget *table, int row);    // 下移行
+    void deleteRow(QTableWidget *table, int row);      // 删除行
+    void swapRows(QTableWidget *table, int row1, int row2);  // 交换两行
+    void updateRowNumbers(QTableWidget *table);        // 更新序号
     QList<PowerPreset> loadPowerPresetsFromTable();  // 从表格加载功率预设
     QList<StagePowerPreset> loadPowerPresetsFromTableStage();  // 从表格加载功率预设（位移台页）
     void executePowerPreset(int index);          // 执行单个功率预设
     void executePowerPresetStage(int index);     // 执行单个功率预设（位移台页）
+    void executeCombinedPresetGalvo(int index);  // 执行组合预设（振镜页：功率+延迟线）
+    void executeCombinedPresetStage(int index);  // 执行组合预设（位移台页：电控+功率+延迟线）
     void stopPowerPresetExecution();             // 停止功率预设执行
     void stopPowerPresetExecutionStage();        // 停止功率预设执行（位移台页）
     

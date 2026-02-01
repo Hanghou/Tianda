@@ -23,6 +23,7 @@
 #include <QPixmap>
 #include <QLayoutItem>
 #include <QTextStream>
+#include <QDoubleValidator>
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
@@ -1527,29 +1528,83 @@ void Integration::initPresetTables()
 {
     // 初始化振镜页 - 光源功率预设表格
     m_powerPresetTable = ui->tableWidgetPowerPresets;
-    m_powerPresetTable->setColumnCount(5);
-    m_powerPresetTable->setHorizontalHeaderLabels({"振镜角度起(度)", "振镜角度止(度)", 
+    m_powerPresetTable->setColumnCount(6);  // 减少到6列：序号 + 5个数据列
+    m_powerPresetTable->setHorizontalHeaderLabels({"序号", "振镜起始(deg)", "振镜结束(deg)", 
                                                     "种子源泵(mA)", "FOPO泵(A)", "Stokes泵(mA)"});
-    m_powerPresetTable->horizontalHeader()->setStretchLastSection(true);
+    m_powerPresetTable->horizontalHeader()->setStretchLastSection(false);
+    m_powerPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);  // 整行选择
+    m_powerPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);  // 单行选择
+    
+    // 设置表头字体大小
+    QFont headerFont = m_powerPresetTable->horizontalHeader()->font();
+    headerFont.setPointSize(9);  // 设置表头字体为9号
+    m_powerPresetTable->horizontalHeader()->setFont(headerFont);
+    
+    // 设置列宽（所有列宽+40px）
+    m_powerPresetTable->setColumnWidth(0, 90);    // 序号列：50+40
+    m_powerPresetTable->setColumnWidth(1, 150);   // 振镜起始：110+40
+    m_powerPresetTable->setColumnWidth(2, 150);   // 振镜结束：110+40
+    m_powerPresetTable->setColumnWidth(3, 150);   // 种子源泵：110+40
+    m_powerPresetTable->setColumnWidth(4, 130);   // FOPO泵：90+40
+    m_powerPresetTable->setColumnWidth(5, 150);   // Stokes泵：110+40
     
     // 初始化振镜页 - 延迟线预设表格
     m_delayPresetTableGalvo = ui->tableWidgetDelayPresetsGalvo;
-    m_delayPresetTableGalvo->setColumnCount(2);
-    m_delayPresetTableGalvo->setHorizontalHeaderLabels({"振镜角度(度)", "延迟时间(PS)"});
-    m_delayPresetTableGalvo->horizontalHeader()->setStretchLastSection(true);
+    m_delayPresetTableGalvo->setColumnCount(3);  // 减少到3列：序号 + 2个数据列
+    m_delayPresetTableGalvo->setHorizontalHeaderLabels({"序号", "振镜角度(deg)", "延迟时间(PS)"});
+    m_delayPresetTableGalvo->horizontalHeader()->setStretchLastSection(false);
+    m_delayPresetTableGalvo->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_delayPresetTableGalvo->setSelectionMode(QAbstractItemView::SingleSelection);
+    
+    // 设置表头字体大小
+    headerFont = m_delayPresetTableGalvo->horizontalHeader()->font();
+    headerFont.setPointSize(9);
+    m_delayPresetTableGalvo->horizontalHeader()->setFont(headerFont);
+    
+    // 设置列宽（所有列宽+40px）
+    m_delayPresetTableGalvo->setColumnWidth(0, 90);    // 序号列：50+40
+    m_delayPresetTableGalvo->setColumnWidth(1, 160);   // 振镜角度：120+40
+    m_delayPresetTableGalvo->setColumnWidth(2, 150);   // 延迟时间：110+40
     
     // 初始化位移台页 - 电控与功率预设表格
     m_powerPresetTableStage = ui->tableWidgetPowerPresetsStage;
-    m_powerPresetTableStage->setColumnCount(5);
-    m_powerPresetTableStage->setHorizontalHeaderLabels({"旋转台角度(度)", "直线台位置(mm)", 
+    m_powerPresetTableStage->setColumnCount(6);  // 减少到6列：序号 + 5个数据列
+    m_powerPresetTableStage->setHorizontalHeaderLabels({"序号", "旋转台角度(deg)", "位移台位置(mm)", 
                                                          "种子源泵(mA)", "FOPO泵(A)", "Stokes泵(mA)"});
-    m_powerPresetTableStage->horizontalHeader()->setStretchLastSection(true);
+    m_powerPresetTableStage->horizontalHeader()->setStretchLastSection(false);
+    m_powerPresetTableStage->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_powerPresetTableStage->setSelectionMode(QAbstractItemView::SingleSelection);
+    
+    // 设置表头字体大小
+    headerFont = m_powerPresetTableStage->horizontalHeader()->font();
+    headerFont.setPointSize(9);
+    m_powerPresetTableStage->horizontalHeader()->setFont(headerFont);
+    
+    // 设置列宽（所有列宽+40px）
+    m_powerPresetTableStage->setColumnWidth(0, 90);    // 序号列：50+40
+    m_powerPresetTableStage->setColumnWidth(1, 160);   // 旋转台角度：120+40
+    m_powerPresetTableStage->setColumnWidth(2, 160);   // 位移台位置：120+40
+    m_powerPresetTableStage->setColumnWidth(3, 150);   // 种子源泵：110+40
+    m_powerPresetTableStage->setColumnWidth(4, 130);   // FOPO泵：90+40
+    m_powerPresetTableStage->setColumnWidth(5, 150);   // Stokes泵：110+40
     
     // 初始化位移台页 - 延迟线预设表格
     m_delayPresetTable = ui->tableWidgetDelayPresets;
-    m_delayPresetTable->setColumnCount(2);
-    m_delayPresetTable->setHorizontalHeaderLabels({"振镜角度(度)", "延迟时间(PS)"});
-    m_delayPresetTable->horizontalHeader()->setStretchLastSection(true);
+    m_delayPresetTable->setColumnCount(3);  // 减少到3列：序号 + 2个数据列
+    m_delayPresetTable->setHorizontalHeaderLabels({"序号", "振镜角度(deg)", "延迟时间(PS)"});
+    m_delayPresetTable->horizontalHeader()->setStretchLastSection(false);
+    m_delayPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_delayPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    
+    // 设置表头字体大小
+    headerFont = m_delayPresetTable->horizontalHeader()->font();
+    headerFont.setPointSize(9);
+    m_delayPresetTable->horizontalHeader()->setFont(headerFont);
+    
+    // 设置列宽（所有列宽+40px）
+    m_delayPresetTable->setColumnWidth(0, 90);    // 序号列：50+40
+    m_delayPresetTable->setColumnWidth(1, 160);   // 振镜角度：120+40
+    m_delayPresetTable->setColumnWidth(2, 150);   // 延迟时间：110+40
     
     qDebug() << "预设表格初始化完成";
 }
@@ -1569,10 +1624,12 @@ void Integration::on_btnClearPowerPresets_clicked()
 
 void Integration::on_btnStartPowerExecution_clicked()
 {
-    // 加载预设
+    // 加载两个预设
     m_currentPowerPresets = loadPowerPresetsFromTable();
+    m_currentDelayPresetsGalvo = loadDelayPresetsFromTable(PresetPageType::GalvoPage);
     
-    if (m_currentPowerPresets.isEmpty()) {
+    // 检查是否至少有一个预设
+    if (m_currentPowerPresets.isEmpty() && m_currentDelayPresetsGalvo.isEmpty()) {
         QMessageBox::warning(this, "错误", "没有可执行的预设");
         return;
     }
@@ -1582,7 +1639,9 @@ void Integration::on_btnStartPowerExecution_clicked()
     bool needsSeed = false;
     bool needsFOPO = false;
     bool needsStokes = false;
+    bool needsDelay = false;
     
+    // 检查功率预设
     for (const PowerPreset &preset : m_currentPowerPresets) {
         if (preset.galvoAngleStart != 0 || preset.galvoAngleEnd != 0) {
             needsGalvo = true;
@@ -1595,6 +1654,16 @@ void Integration::on_btnStartPowerExecution_clicked()
         }
         if (preset.stokesPumpCurrent != 0) {
             needsStokes = true;
+        }
+    }
+    
+    // 检查延迟线预设
+    for (const DelayPreset &preset : m_currentDelayPresetsGalvo) {
+        if (preset.galvoAngle != 0) {
+            needsGalvo = true;
+        }
+        if (preset.delayTime != 0) {
+            needsDelay = true;
         }
     }
     
@@ -1611,6 +1680,9 @@ void Integration::on_btnStartPowerExecution_clicked()
     }
     if (needsStokes && !m_stokesLaserDriver->isConnected()) {
         missingDevices << "Stokes激光器";
+    }
+    if (needsDelay && !m_delayLine->isConnected()) {
+        missingDevices << "延时线";
     }
     
     // 如果有设备未连接，询问用户是否继续
@@ -1630,16 +1702,21 @@ void Integration::on_btnStartPowerExecution_clicked()
     
     // 开始执行
     m_currentPowerPresetIndex = 0;
+    m_currentDelayPresetIndexGalvo = 0;
     m_isPowerPresetExecuting = true;
+    m_isDelayPresetExecutingGalvo = true;
     
-    // 执行第一个预设
-    executePowerPreset(0);
+    // 执行第一组
+    executeCombinedPresetGalvo(0);
     
     // 启动定时器
     m_powerPresetDelayTimer->start(m_powerPresetTimeInterval * 1000);
     
-    updateStatusBar("开始执行功率预设");
-    qDebug() << "开始执行功率预设，共" << m_currentPowerPresets.size() << "个";
+    // 更新状态
+    int maxSize = qMax(m_currentPowerPresets.size(), m_currentDelayPresetsGalvo.size());
+    updateStatusBar(QString("开始执行预设（共 %1 组）").arg(maxSize));
+    qDebug() << "开始执行组合预设，功率预设:" << m_currentPowerPresets.size() 
+             << "组，延迟线预设:" << m_currentDelayPresetsGalvo.size() << "组";
 }
 
 void Integration::on_btnStopPowerExecution_clicked()
@@ -1647,24 +1724,70 @@ void Integration::on_btnStopPowerExecution_clicked()
     stopPowerPresetExecution();
 }
 
+void Integration::on_btnMoveUpPowerPreset_clicked()
+{
+    int currentRow = m_powerPresetTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowUp(m_powerPresetTable, currentRow);
+}
+
+void Integration::on_btnMoveDownPowerPreset_clicked()
+{
+    int currentRow = m_powerPresetTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowDown(m_powerPresetTable, currentRow);
+}
+
+void Integration::on_btnDeletePowerPreset_clicked()
+{
+    int currentRow = m_powerPresetTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    deleteRow(m_powerPresetTable, currentRow);
+}
+
+void Integration::on_btnConfirmDelayPreset_clicked()
+{
+    // 获取时间间隔
+    m_powerPresetTimeInterval = ui->spinBoxGalvoTimeInterval->value();
+    
+    // 调用执行函数
+    on_btnStartPowerExecution_clicked();
+}
+
 void Integration::onPowerPresetDelayTimeout()
 {
-    if (!m_isPowerPresetExecuting) {
+    if (!m_isPowerPresetExecuting && !m_isDelayPresetExecutingGalvo) {
         m_powerPresetDelayTimer->stop();
         return;
     }
     
-    m_currentPowerPresetIndex++;
+    // 计算最大组数
+    int maxSize = qMax(m_currentPowerPresets.size(), m_currentDelayPresetsGalvo.size());
     
-    if (m_currentPowerPresetIndex >= m_currentPowerPresets.size()) {
+    m_currentPowerPresetIndex++;
+    m_currentDelayPresetIndexGalvo++;
+    
+    if (m_currentPowerPresetIndex >= maxSize) {
         // 所有预设执行完成
         stopPowerPresetExecution();
-        QMessageBox::information(this, "完成", "所有功率预设执行完成");
+        QMessageBox::information(this, "完成", 
+            QString("所有预设执行完成\n功率预设: %1 组\n延迟线预设: %2 组")
+            .arg(m_currentPowerPresets.size())
+            .arg(m_currentDelayPresetsGalvo.size()));
         return;
     }
     
-    // 执行下一个预设
-    executePowerPreset(m_currentPowerPresetIndex);
+    // 执行下一组预设
+    executeCombinedPresetGalvo(m_currentPowerPresetIndex);
 }
 
 void Integration::addPowerPresetRow()
@@ -1672,11 +1795,33 @@ void Integration::addPowerPresetRow()
     int row = m_powerPresetTable->rowCount();
     m_powerPresetTable->insertRow(row);
     
-    // 添加输入框
-    for (int col = 0; col < 5; col++) {
+    // 第0列：序号（只读）
+    QTableWidgetItem *numberItem = new QTableWidgetItem(QString::number(row + 1));
+    numberItem->setTextAlignment(Qt::AlignCenter);
+    numberItem->setFlags(numberItem->flags() & ~Qt::ItemIsEditable);  // 设置为只读
+    m_powerPresetTable->setItem(row, 0, numberItem);
+    
+    // 第1-5列：添加输入框（限制为三位小数的浮点数）
+    for (int col = 1; col <= 5; col++) {
         QLineEdit *lineEdit = new QLineEdit();
-        lineEdit->setText("0");
+        lineEdit->setText("0.000");
         lineEdit->setAlignment(Qt::AlignCenter);
+        
+        // 设置验证器：允许浮点数，最多三位小数
+        QDoubleValidator *validator = new QDoubleValidator(lineEdit);
+        validator->setDecimals(3);  // 最多三位小数
+        validator->setNotation(QDoubleValidator::StandardNotation);
+        lineEdit->setValidator(validator);
+        
+        // 当编辑完成时，自动格式化为三位小数
+        connect(lineEdit, &QLineEdit::editingFinished, [lineEdit]() {
+            bool ok;
+            double value = lineEdit->text().toDouble(&ok);
+            if (ok) {
+                lineEdit->setText(QString::number(value, 'f', 3));
+            }
+        });
+        
         m_powerPresetTable->setCellWidget(row, col, lineEdit);
     }
     
@@ -1696,32 +1841,33 @@ QList<PowerPreset> Integration::loadPowerPresetsFromTable()
     for (int row = 0; row < m_powerPresetTable->rowCount(); row++) {
         PowerPreset preset;
         
-        // 读取振镜角度起
-        QLineEdit *lineEditStart = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 0));
+        // 第0列是序号，跳过
+        // 读取振镜角度起（第1列）
+        QLineEdit *lineEditStart = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 1));
         if (lineEditStart) {
             preset.galvoAngleStart = lineEditStart->text().toFloat();
         }
         
-        // 读取振镜角度止
-        QLineEdit *lineEditEnd = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 1));
+        // 读取振镜角度止（第2列）
+        QLineEdit *lineEditEnd = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 2));
         if (lineEditEnd) {
             preset.galvoAngleEnd = lineEditEnd->text().toFloat();
         }
         
-        // 读取种子源泵电流
-        QLineEdit *lineEditSeed = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 2));
+        // 读取种子源泵电流（第3列）
+        QLineEdit *lineEditSeed = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 3));
         if (lineEditSeed) {
             preset.seedPumpCurrent = lineEditSeed->text().toFloat();
         }
         
-        // 读取FOPO泵电流
-        QLineEdit *lineEditFOPO = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 3));
+        // 读取FOPO泵电流（第4列）
+        QLineEdit *lineEditFOPO = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 4));
         if (lineEditFOPO) {
             preset.fopoPumpCurrent = lineEditFOPO->text().toFloat();
         }
         
-        // 读取Stokes泵电流
-        QLineEdit *lineEditStokes = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 4));
+        // 读取Stokes泵电流（第5列）
+        QLineEdit *lineEditStokes = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 5));
         if (lineEditStokes) {
             preset.stokesPumpCurrent = lineEditStokes->text().toFloat();
         }
@@ -1812,12 +1958,32 @@ void Integration::executePowerPreset(int index)
     }
 }
 
+void Integration::executeCombinedPresetGalvo(int index)
+{
+    // 计算实际使用的索引（如果超出范围，使用最后一个）
+    int powerIndex = qMin(index, m_currentPowerPresets.size() - 1);
+    int delayIndex = qMin(index, m_currentDelayPresetsGalvo.size() - 1);
+    
+    qDebug() << "执行组合预设" << (index + 1) << "功率索引:" << powerIndex << "延迟索引:" << delayIndex;
+    
+    // 执行功率预设
+    if (powerIndex >= 0 && !m_currentPowerPresets.isEmpty()) {
+        executePowerPreset(powerIndex);
+    }
+    
+    // 执行延迟线预设
+    if (delayIndex >= 0 && !m_currentDelayPresetsGalvo.isEmpty()) {
+        executeDelayPreset(PresetPageType::GalvoPage, delayIndex);
+    }
+}
+
 void Integration::stopPowerPresetExecution()
 {
     m_isPowerPresetExecuting = false;
+    m_isDelayPresetExecutingGalvo = false;
     m_powerPresetDelayTimer->stop();
-    updateStatusBar("功率预设执行已停止");
-    qDebug() << "功率预设执行已停止";
+    updateStatusBar("预设执行已停止");
+    qDebug() << "预设执行已停止";
 }
 
 
@@ -1893,6 +2059,36 @@ void Integration::on_btnStartDelayExecutionGalvo_clicked()
 void Integration::on_btnStopDelayExecutionGalvo_clicked()
 {
     stopDelayPresetExecution(PresetPageType::GalvoPage);
+}
+
+void Integration::on_btnMoveUpDelayPresetGalvo_clicked()
+{
+    int currentRow = m_delayPresetTableGalvo->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowUp(m_delayPresetTableGalvo, currentRow);
+}
+
+void Integration::on_btnMoveDownDelayPresetGalvo_clicked()
+{
+    int currentRow = m_delayPresetTableGalvo->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowDown(m_delayPresetTableGalvo, currentRow);
+}
+
+void Integration::on_btnDeleteDelayPresetGalvo_clicked()
+{
+    int currentRow = m_delayPresetTableGalvo->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    deleteRow(m_delayPresetTableGalvo, currentRow);
 }
 
 void Integration::onDelayPresetDelayTimeoutGalvo()
@@ -2001,6 +2197,36 @@ void Integration::on_btnStopPowerExecutionStage_clicked()
     stopPowerPresetExecutionStage();
 }
 
+void Integration::on_btnMoveUpPowerPresetStage_clicked()
+{
+    int currentRow = m_powerPresetTableStage->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowUp(m_powerPresetTableStage, currentRow);
+}
+
+void Integration::on_btnMoveDownPowerPresetStage_clicked()
+{
+    int currentRow = m_powerPresetTableStage->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowDown(m_powerPresetTableStage, currentRow);
+}
+
+void Integration::on_btnDeletePowerPresetStage_clicked()
+{
+    int currentRow = m_powerPresetTableStage->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    deleteRow(m_powerPresetTableStage, currentRow);
+}
+
 void Integration::onPowerPresetDelayTimeoutStage()
 {
     if (!m_isPowerPresetExecutingStage) {
@@ -2019,16 +2245,47 @@ void Integration::onPowerPresetDelayTimeoutStage()
     executePowerPresetStage(m_currentPowerPresetIndexStage);
 }
 
+void Integration::on_btnConfirmStagePreset_clicked()
+{
+    // 获取时间间隔
+    m_powerPresetTimeIntervalStage = ui->spinBoxStageTimeInterval->value();
+    
+    // 调用执行函数
+    on_btnStartPowerExecutionStage_clicked();
+}
+
 void Integration::addPowerPresetRowStage()
 {
     int row = m_powerPresetTableStage->rowCount();
     m_powerPresetTableStage->insertRow(row);
     
-    // 添加输入框
-    for (int col = 0; col < 5; col++) {
+    // 第0列：序号（只读）
+    QTableWidgetItem *numberItem = new QTableWidgetItem(QString::number(row + 1));
+    numberItem->setTextAlignment(Qt::AlignCenter);
+    numberItem->setFlags(numberItem->flags() & ~Qt::ItemIsEditable);  // 设置为只读
+    m_powerPresetTableStage->setItem(row, 0, numberItem);
+    
+    // 第1-5列：添加输入框（限制为三位小数的浮点数）
+    for (int col = 1; col <= 5; col++) {
         QLineEdit *lineEdit = new QLineEdit();
-        lineEdit->setText("0");
+        lineEdit->setText("0.000");
         lineEdit->setAlignment(Qt::AlignCenter);
+        
+        // 设置验证器：允许浮点数，最多三位小数
+        QDoubleValidator *validator = new QDoubleValidator(lineEdit);
+        validator->setDecimals(3);  // 最多三位小数
+        validator->setNotation(QDoubleValidator::StandardNotation);
+        lineEdit->setValidator(validator);
+        
+        // 当编辑完成时，自动格式化为三位小数
+        connect(lineEdit, &QLineEdit::editingFinished, [lineEdit]() {
+            bool ok;
+            double value = lineEdit->text().toDouble(&ok);
+            if (ok) {
+                lineEdit->setText(QString::number(value, 'f', 3));
+            }
+        });
+        
         m_powerPresetTableStage->setCellWidget(row, col, lineEdit);
     }
     
@@ -2048,32 +2305,33 @@ QList<StagePowerPreset> Integration::loadPowerPresetsFromTableStage()
     for (int row = 0; row < m_powerPresetTableStage->rowCount(); row++) {
         StagePowerPreset preset;
         
-        // 读取旋转台角度
-        QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 0));
+        // 第0列是序号，跳过
+        // 读取旋转台角度（第1列）
+        QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 1));
         if (lineEditAngle) {
             preset.stageAngle = lineEditAngle->text().toFloat();
         }
         
-        // 读取直线台位置
-        QLineEdit *lineEditPos = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 1));
+        // 读取直线台位置（第2列）
+        QLineEdit *lineEditPos = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 2));
         if (lineEditPos) {
             preset.stagePosition = lineEditPos->text().toFloat();
         }
         
-        // 读取种子源泵电流
-        QLineEdit *lineEditSeed = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 2));
+        // 读取种子源泵电流（第3列）
+        QLineEdit *lineEditSeed = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 3));
         if (lineEditSeed) {
             preset.seedPumpCurrent = lineEditSeed->text().toFloat();
         }
         
-        // 读取FOPO泵电流
-        QLineEdit *lineEditFOPO = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 3));
+        // 读取FOPO泵电流（第4列）
+        QLineEdit *lineEditFOPO = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 4));
         if (lineEditFOPO) {
             preset.fopoPumpCurrent = lineEditFOPO->text().toFloat();
         }
         
-        // 读取Stokes泵电流
-        QLineEdit *lineEditStokes = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 4));
+        // 读取Stokes泵电流（第5列）
+        QLineEdit *lineEditStokes = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 5));
         if (lineEditStokes) {
             preset.stokesPumpCurrent = lineEditStokes->text().toFloat();
         }
@@ -2258,6 +2516,36 @@ void Integration::on_btnStopDelayExecution_clicked()
     stopDelayPresetExecution(PresetPageType::StagePage);
 }
 
+void Integration::on_btnMoveUpDelayPreset_clicked()
+{
+    int currentRow = m_delayPresetTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowUp(m_delayPresetTable, currentRow);
+}
+
+void Integration::on_btnMoveDownDelayPreset_clicked()
+{
+    int currentRow = m_delayPresetTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    moveRowDown(m_delayPresetTable, currentRow);
+}
+
+void Integration::on_btnDeleteDelayPreset_clicked()
+{
+    int currentRow = m_delayPresetTable->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "提示", "请先选择要操作的行");
+        return;
+    }
+    deleteRow(m_delayPresetTable, currentRow);
+}
+
 void Integration::onDelayPresetDelayTimeout()
 {
     if (!m_isDelayPresetExecuting) {
@@ -2287,11 +2575,33 @@ void Integration::addDelayPresetRow(PresetPageType pageType)
     int row = table->rowCount();
     table->insertRow(row);
     
-    // 添加输入框
-    for (int col = 0; col < 2; col++) {
+    // 第0列：序号（只读）
+    QTableWidgetItem *numberItem = new QTableWidgetItem(QString::number(row + 1));
+    numberItem->setTextAlignment(Qt::AlignCenter);
+    numberItem->setFlags(numberItem->flags() & ~Qt::ItemIsEditable);  // 设置为只读
+    table->setItem(row, 0, numberItem);
+    
+    // 第1-2列：添加输入框（限制为三位小数的浮点数）
+    for (int col = 1; col <= 2; col++) {
         QLineEdit *lineEdit = new QLineEdit();
-        lineEdit->setText("0");
+        lineEdit->setText("0.000");
         lineEdit->setAlignment(Qt::AlignCenter);
+        
+        // 设置验证器：允许浮点数，最多三位小数
+        QDoubleValidator *validator = new QDoubleValidator(lineEdit);
+        validator->setDecimals(3);  // 最多三位小数
+        validator->setNotation(QDoubleValidator::StandardNotation);
+        lineEdit->setValidator(validator);
+        
+        // 当编辑完成时，自动格式化为三位小数
+        connect(lineEdit, &QLineEdit::editingFinished, [lineEdit]() {
+            bool ok;
+            double value = lineEdit->text().toDouble(&ok);
+            if (ok) {
+                lineEdit->setText(QString::number(value, 'f', 3));
+            }
+        });
+        
         table->setCellWidget(row, col, lineEdit);
     }
     
@@ -2319,14 +2629,15 @@ QList<DelayPreset> Integration::loadDelayPresetsFromTable(PresetPageType pageTyp
     for (int row = 0; row < table->rowCount(); row++) {
         DelayPreset preset;
         
-        // 读取振镜角度
-        QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 0));
+        // 第0列是序号，跳过
+        // 读取振镜角度（第1列）
+        QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
         if (lineEditAngle) {
             preset.galvoAngle = lineEditAngle->text().toFloat();
         }
         
-        // 读取延迟时间
-        QLineEdit *lineEditDelay = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
+        // 读取延迟时间（第2列）
+        QLineEdit *lineEditDelay = qobject_cast<QLineEdit*>(table->cellWidget(row, 2));
         if (lineEditDelay) {
             preset.delayTime = lineEditDelay->text().toFloat();
         }
@@ -2439,4 +2750,58 @@ bool& Integration::isDelayPresetExecuting(PresetPageType pageType)
 int& Integration::getDelayPresetTimeInterval(PresetPageType pageType)
 {
     return (pageType == PresetPageType::GalvoPage) ? m_delayPresetTimeIntervalGalvo : m_delayPresetTimeInterval;
+}
+
+// ========== 表格操作辅助函数 ==========
+
+void Integration::moveRowUp(QTableWidget *table, int row)
+{
+    if (row <= 0) return;
+    swapRows(table, row, row - 1);
+    updateRowNumbers(table);
+}
+
+void Integration::moveRowDown(QTableWidget *table, int row)
+{
+    if (row >= table->rowCount() - 1) return;
+    swapRows(table, row, row + 1);
+    updateRowNumbers(table);
+}
+
+void Integration::deleteRow(QTableWidget *table, int row)
+{
+    table->removeRow(row);
+    updateRowNumbers(table);
+}
+
+void Integration::swapRows(QTableWidget *table, int row1, int row2)
+{
+    int colCount = table->columnCount();
+    
+    // 跳过序号列（第0列），交换所有数据列
+    for (int col = 1; col < colCount; col++) {
+        QWidget *widget1 = table->cellWidget(row1, col);
+        QWidget *widget2 = table->cellWidget(row2, col);
+        
+        if (widget1 && widget2) {
+            QLineEdit *edit1 = qobject_cast<QLineEdit*>(widget1);
+            QLineEdit *edit2 = qobject_cast<QLineEdit*>(widget2);
+            
+            if (edit1 && edit2) {
+                QString temp = edit1->text();
+                edit1->setText(edit2->text());
+                edit2->setText(temp);
+            }
+        }
+    }
+}
+
+void Integration::updateRowNumbers(QTableWidget *table)
+{
+    for (int row = 0; row < table->rowCount(); row++) {
+        QTableWidgetItem *item = table->item(row, 0);
+        if (item) {
+            item->setText(QString::number(row + 1));
+        }
+    }
 }

@@ -23,7 +23,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_35">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,2">
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="3,5">
       <item>
        <widget class="QFrame" name="frameLeftPanel">
         <property name="frameShape">
@@ -699,7 +699,7 @@
             <attribute name="title">
              <string>振镜版</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_7" stretch="2,2">
+            <layout class="QVBoxLayout" name="verticalLayout_7" stretch="1,3">
              <item>
               <widget class="QFrame" name="frameGalvoControlPanel">
                <property name="frameShape">
@@ -708,7 +708,7 @@
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_13" stretch="6,1">
+               <layout class="QVBoxLayout" name="verticalLayout_13" stretch="4,1">
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="1,1">
                   <item>
@@ -1048,7 +1048,7 @@
                 <item>
                  <widget class="QGroupBox" name="groupBoxPowerPresetsNew">
                   <property name="title">
-                   <string>光源功率预设置（动态）</string>
+                   <string>预设置执行控制（同步执行功率和延迟线预设）</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignCenter</set>
@@ -1064,6 +1064,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>时间间隔:</string>
                        </property>
@@ -1071,6 +1074,9 @@
                      </item>
                      <item>
                       <widget class="QSpinBox" name="spinBoxPowerTimeInterval">
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="suffix">
                         <string> 秒</string>
                        </property>
@@ -1099,6 +1105,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>开始执行</string>
                        </property>
@@ -1121,6 +1130,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>停止执行</string>
                        </property>
@@ -1134,6 +1146,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>状态:</string>
                        </property>
@@ -1146,6 +1161,9 @@
                          <weight>50</weight>
                          <bold>false</bold>
                         </font>
+                       </property>
+                       <property name="visible">
+                        <bool>false</bool>
                        </property>
                        <property name="text">
                         <string>就绪</string>
@@ -1172,8 +1190,16 @@
                      <property name="minimumSize">
                       <size>
                        <width>0</width>
-                       <height>200</height>
+                       <height>150</height>
                       </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>9</pointsize>
+                      </font>
+                     </property>
+                     <property name="midLineWidth">
+                      <number>0</number>
                      </property>
                      <property name="editTriggers">
                       <set>QAbstractItemView::AllEditTriggers</set>
@@ -1185,8 +1211,13 @@
                       <number>6</number>
                      </property>
                      <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>120</number>
+                      <number>100</number>
                      </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
                      <column>
                       <property name="text">
                        <string>振镜起始(deg)</string>
@@ -1210,11 +1241,6 @@
                      <column>
                       <property name="text">
                        <string>Stokes泵(mA)</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>操作</string>
                       </property>
                      </column>
                     </widget>
@@ -1260,6 +1286,63 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QPushButton" name="btnMoveUpPowerPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>上移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveDownPowerPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>下移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDeletePowerPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>删除</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <spacer name="horizontalSpacerPowerButtons">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
@@ -1296,6 +1379,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>时间间隔:</string>
                        </property>
@@ -1303,6 +1389,9 @@
                      </item>
                      <item>
                       <widget class="QSpinBox" name="spinBoxDelayTimeIntervalGalvo">
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="suffix">
                         <string> 秒</string>
                        </property>
@@ -1331,6 +1420,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>开始执行</string>
                        </property>
@@ -1353,6 +1445,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>停止执行</string>
                        </property>
@@ -1366,6 +1461,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>状态:</string>
                        </property>
@@ -1378,6 +1476,9 @@
                          <weight>50</weight>
                          <bold>false</bold>
                         </font>
+                       </property>
+                       <property name="visible">
+                        <bool>false</bool>
                        </property>
                        <property name="text">
                         <string>就绪</string>
@@ -1404,8 +1505,13 @@
                      <property name="minimumSize">
                       <size>
                        <width>0</width>
-                       <height>200</height>
+                       <height>150</height>
                       </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>9</pointsize>
+                      </font>
                      </property>
                      <property name="editTriggers">
                       <set>QAbstractItemView::AllEditTriggers</set>
@@ -1417,8 +1523,13 @@
                       <number>3</number>
                      </property>
                      <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>150</number>
+                      <number>100</number>
                      </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
                      <column>
                       <property name="text">
                        <string>振镜角度(deg)</string>
@@ -1427,11 +1538,6 @@
                      <column>
                       <property name="text">
                        <string>延迟时间(PS)</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>操作</string>
                       </property>
                      </column>
                     </widget>
@@ -1477,6 +1583,63 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QPushButton" name="btnMoveUpDelayPresetGalvo">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>上移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveDownDelayPresetGalvo">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>下移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDeleteDelayPresetGalvo">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>删除</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <spacer name="horizontalSpacerDelayButtonsGalvo">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
@@ -1497,8 +1660,21 @@
                 <item>
                  <widget class="QWidget" name="widgetGalvoConfirmButton" native="true">
                   <layout class="QHBoxLayout" name="horizontalLayout_36">
-                   <item alignment="Qt::AlignHCenter">
-                    <widget class="QPushButton" name="btnConfirmDelayPreset">
+                   <item>
+                    <spacer name="horizontalSpacerGalvoConfirm1">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="labelGalvoTimeInterval">
                      <property name="font">
                       <font>
                        <weight>50</weight>
@@ -1506,12 +1682,86 @@
                       </font>
                      </property>
                      <property name="text">
-                      <string>确定</string>
+                      <string>时间间隔:</string>
                      </property>
                     </widget>
                    </item>
+                   <item>
+                    <widget class="QSpinBox" name="spinBoxGalvoTimeInterval">
+                     <property name="suffix">
+                      <string> 秒</string>
+                     </property>
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>3600</number>
+                     </property>
+                     <property name="value">
+                      <number>2</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacerGalvoConfirm2">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnConfirmDelayPreset">
+                     <property name="minimumSize">
+                      <size>
+                       <width>100</width>
+                       <height>35</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <weight>50</weight>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>开始执行</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacerGalvoConfirm3">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
                   </layout>
                  </widget>
+                </item>
+                <item>
+                 <spacer name="verticalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
                 </item>
                </layout>
               </widget>
@@ -1522,7 +1772,7 @@
             <attribute name="title">
              <string>位移台版</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_30">
+            <layout class="QVBoxLayout" name="verticalLayout_30" stretch="1,3">
              <item>
               <widget class="QFrame" name="frameStageControlPanel">
                <property name="frameShape">
@@ -1929,7 +2179,7 @@
                 <item>
                  <widget class="QGroupBox" name="groupBoxPowerPresetsStage">
                   <property name="title">
-                   <string>电控平台与功率预设置（动态）</string>
+                   <string>预设置执行控制（同步执行电控平台、功率和延迟线预设）</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignCenter</set>
@@ -1945,6 +2195,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>时间间隔:</string>
                        </property>
@@ -1952,6 +2205,9 @@
                      </item>
                      <item>
                       <widget class="QSpinBox" name="spinBoxPowerTimeIntervalStage">
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="suffix">
                         <string> 秒</string>
                        </property>
@@ -1980,6 +2236,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>开始执行</string>
                        </property>
@@ -2002,6 +2261,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>停止执行</string>
                        </property>
@@ -2015,6 +2277,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>状态:</string>
                        </property>
@@ -2027,6 +2292,9 @@
                          <weight>50</weight>
                          <bold>false</bold>
                         </font>
+                       </property>
+                       <property name="visible">
+                        <bool>false</bool>
                        </property>
                        <property name="text">
                         <string>就绪</string>
@@ -2053,8 +2321,13 @@
                      <property name="minimumSize">
                       <size>
                        <width>0</width>
-                       <height>200</height>
+                       <height>150</height>
                       </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>9</pointsize>
+                      </font>
                      </property>
                      <property name="editTriggers">
                       <set>QAbstractItemView::AllEditTriggers</set>
@@ -2066,8 +2339,13 @@
                       <number>6</number>
                      </property>
                      <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>120</number>
+                      <number>100</number>
                      </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
                      <column>
                       <property name="text">
                        <string>旋转台角度(deg)</string>
@@ -2091,11 +2369,6 @@
                      <column>
                       <property name="text">
                        <string>Stokes泵(mA)</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>操作</string>
                       </property>
                      </column>
                     </widget>
@@ -2141,6 +2414,63 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QPushButton" name="btnMoveUpPowerPresetStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>上移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveDownPowerPresetStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>下移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDeletePowerPresetStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>删除</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <spacer name="horizontalSpacerPowerButtonsStage">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
@@ -2177,6 +2507,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>时间间隔:</string>
                        </property>
@@ -2184,6 +2517,9 @@
                      </item>
                      <item>
                       <widget class="QSpinBox" name="spinBoxDelayTimeInterval">
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="suffix">
                         <string> 秒</string>
                        </property>
@@ -2212,6 +2548,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>开始执行</string>
                        </property>
@@ -2234,6 +2573,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>停止执行</string>
                        </property>
@@ -2247,6 +2589,9 @@
                          <bold>false</bold>
                         </font>
                        </property>
+                       <property name="visible">
+                        <bool>false</bool>
+                       </property>
                        <property name="text">
                         <string>状态:</string>
                        </property>
@@ -2259,6 +2604,9 @@
                          <weight>50</weight>
                          <bold>false</bold>
                         </font>
+                       </property>
+                       <property name="visible">
+                        <bool>false</bool>
                        </property>
                        <property name="text">
                         <string>就绪</string>
@@ -2285,8 +2633,13 @@
                      <property name="minimumSize">
                       <size>
                        <width>0</width>
-                       <height>200</height>
+                       <height>150</height>
                       </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <pointsize>9</pointsize>
+                      </font>
                      </property>
                      <property name="editTriggers">
                       <set>QAbstractItemView::AllEditTriggers</set>
@@ -2298,8 +2651,13 @@
                       <number>3</number>
                      </property>
                      <attribute name="horizontalHeaderDefaultSectionSize">
-                      <number>150</number>
+                      <number>100</number>
                      </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
                      <column>
                       <property name="text">
                        <string>振镜角度(deg)</string>
@@ -2308,11 +2666,6 @@
                      <column>
                       <property name="text">
                        <string>延迟时间(PS)</string>
-                      </property>
-                     </column>
-                     <column>
-                      <property name="text">
-                       <string>操作</string>
                       </property>
                      </column>
                     </widget>
@@ -2358,6 +2711,63 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QPushButton" name="btnMoveUpDelayPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>上移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveDownDelayPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>下移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDeleteDelayPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <weight>50</weight>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>删除</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <spacer name="horizontalSpacerDelayButtons">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
@@ -2378,8 +2788,21 @@
                 <item>
                  <widget class="QWidget" name="widgetStageConfirmButton" native="true">
                   <layout class="QHBoxLayout" name="horizontalLayout_64">
-                   <item alignment="Qt::AlignHCenter">
-                    <widget class="QPushButton" name="btnConfirmStagePreset">
+                   <item>
+                    <spacer name="horizontalSpacerStageLeft">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="labelStageTimeInterval">
                      <property name="font">
                       <font>
                        <weight>50</weight>
@@ -2387,9 +2810,57 @@
                       </font>
                      </property>
                      <property name="text">
-                      <string>确定</string>
+                      <string>时间间隔:</string>
                      </property>
                     </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="spinBoxStageTimeInterval">
+                     <property name="suffix">
+                      <string> 秒</string>
+                     </property>
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>3600</number>
+                     </property>
+                     <property name="value">
+                      <number>2</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item alignment="Qt::AlignHCenter">
+                    <widget class="QPushButton" name="btnConfirmStagePreset">
+                     <property name="minimumSize">
+                      <size>
+                       <width>100</width>
+                       <height>30</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <weight>50</weight>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>开始执行</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacerStageRight">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
                    </item>
                   </layout>
                  </widget>
