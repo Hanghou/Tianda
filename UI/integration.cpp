@@ -23,6 +23,8 @@
 #include <QLayoutItem>
 #include <QTextStream>
 #include <QDoubleValidator>
+#include <QEvent>
+#include <QMouseEvent>
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
@@ -51,6 +53,7 @@ Integration::Integration(QWidget *parent)
     , m_series(nullptr)
     , m_axisX(nullptr)
     , m_axisY(nullptr)
+    , m_chartMaximizedDialog(nullptr)
     , m_powerPresetTable(nullptr)
     , m_powerPresetDelayTimer(nullptr)
     , m_currentPowerPresetIndex(0)
@@ -278,6 +281,18 @@ void Integration::closeEvent(QCloseEvent *event)
 {
     saveConfiguration();
     QMainWindow::closeEvent(event);
+}
+
+bool Integration::eventFilter(QObject *obj, QEvent *event)
+{
+    // 检测图表视图的双击事件
+    if (obj == m_chartView && event->type() == QEvent::MouseButtonDblClick) {
+        showChartMaximized();
+        return true;  // 事件已处理
+    }
+    
+    // 传递给基类处理其他事件
+    return QMainWindow::eventFilter(obj, event);
 }
 
 
@@ -1491,6 +1506,9 @@ void Integration::initSpectrumChart()
     m_chartView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);  // 优化抗锯齿性能
     m_chartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);  // 智能更新视口
     
+    // 安装事件过滤器以处理双击事件
+    m_chartView->installEventFilter(this);
+    
     // 将图表视图添加到UI布局中
     QWidget *plotWidget = ui->widgetSpectrumPlot;
     if (plotWidget) {
@@ -1544,6 +1562,101 @@ void Integration::updateSpectrum(const QVector<int> &intensity)
     }
     
     qDebug() << "光谱数据已更新，数据点数量:" << totalPixels;
+}
+
+void Integration::showChartMaximized()
+{
+    // 如果最大化窗口已存在，直接显示
+    if (m_chartMaximizedDialog) {
+        m_chartMaximizedDialog->show();
+        m_chartMaximizedDialog->raise();
+        m_chartMaximizedDialog->activateWindow();
+        return;
+    }
+    
+    // 创建最大化窗口
+    m_chartMaximizedDialog = new QDialog(this);
+    m_chartMaximizedDialog->setWindowTitle("光谱数据 - 最大化视图");
+    m_chartMaximizedDialog->setWindowFlags(Qt::Window | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
+    m_chartMaximizedDialog->resize(1200, 800);
+    
+    // 创建新的图表和数据系列（复制当前数据）
+    QChart *maximizedChart = new QChart();
+    maximizedChart->setTitle("光谱数据");
+    maximizedChart->setAnimationOptions(QChart::NoAnimation);
+    
+    // 创建新的数据系列并复制数据
+    QLineSeries *maximizedSeries = new QLineSeries();
+    maximizedSeries->setName("光谱强度");
+    maximizedSeries->setUseOpenGL(true);
+    
+    // 如果有数据则复制，否则创建空系列
+    if (m_series && m_series->count() > 0) {
+        maximizedSeries->replace(m_series->points());
+    }
+    
+    maximizedChart->addSeries(maximizedSeries);
+    
+    // 创建坐标轴（复制当前坐标轴设置）
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setTitleText("波长 [nm]");
+    if (m_axisX) {
+        axisX->setRange(m_axisX->min(), m_axisX->max());
+    } else {
+        axisX->setRange(200, 1100);
+    }
+    axisX->setGridLineVisible(true);
+    axisX->setMinorGridLineVisible(true);
+    axisX->setTickCount(10);
+    axisX->setMinorTickCount(4);
+    maximizedChart->addAxis(axisX, Qt::AlignBottom);
+    maximizedSeries->attachAxis(axisX);
+    
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setTitleText("强度 [counts]");
+    if (m_axisY) {
+        axisY->setRange(m_axisY->min(), m_axisY->max());
+    } else {
+        axisY->setRange(0, 65535);
+    }
+    axisY->setGridLineVisible(true);
+    axisY->setMinorGridLineVisible(true);
+    axisY->setTickCount(10);
+    axisY->setMinorTickCount(4);
+    maximizedChart->addAxis(axisY, Qt::AlignLeft);
+    maximizedSeries->attachAxis(axisY);
+    
+    // 显示图例
+    maximizedChart->legend()->setVisible(true);
+    maximizedChart->legend()->setAlignment(Qt::AlignTop);
+    
+    // 创建图表视图
+    QChartView *maximizedChartView = new QChartView(maximizedChart, m_chartMaximizedDialog);
+    maximizedChartView->setRenderHint(QPainter::Antialiasing);
+    maximizedChartView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);
+    maximizedChartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+    
+    // 设置布局
+    QVBoxLayout *layout = new QVBoxLayout(m_chartMaximizedDialog);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(maximizedChartView);
+    m_chartMaximizedDialog->setLayout(layout);
+    
+    // 当窗口关闭时清理资源
+    connect(m_chartMaximizedDialog, &QDialog::finished, this, [this]() {
+        // 删除最大化窗口（图表会自动随窗口删除）
+        if (m_chartMaximizedDialog) {
+            m_chartMaximizedDialog->deleteLater();
+            m_chartMaximizedDialog = nullptr;
+        }
+        
+        qDebug() << "图表最大化窗口已关闭";
+    });
+    
+    // 显示最大化窗口
+    m_chartMaximizedDialog->showMaximized();
+    
+    qDebug() << "图表已最大化显示";
 }
 
 // ========== 串口配置获取函数 ==========

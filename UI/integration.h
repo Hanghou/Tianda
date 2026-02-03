@@ -221,6 +221,7 @@ private:
     // 图表相关函数
     void initSpectrumChart();
     void updateSpectrum(const QVector<int> &intensity);
+    void showChartMaximized();  // 显示最大化图表窗口
     
     // 峰值检测相关函数
     void detectPeaks();
@@ -269,6 +270,7 @@ private:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;  // 事件过滤器
 
 private:
     Ui::Integration *ui;
@@ -300,6 +302,7 @@ private:
     QLineSeries *m_series;
     QValueAxis *m_axisX;
     QValueAxis *m_axisY;
+    class QDialog *m_chartMaximizedDialog;  // 图表最大化窗口
     
     // 峰值检测相关
     struct PeakData {
