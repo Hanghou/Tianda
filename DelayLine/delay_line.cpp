@@ -8,7 +8,7 @@ DelayLine::DelayLine(QObject *parent)
     , m_baudRate(9600)
     , m_deviceId(0x01)
 {
-    setDeviceName("四川梓冠延时线");
+    setDeviceName("电动光纤延时线");
     
     QObject::connect(m_serialPort, &SerialPortBase::dataReceived,
                      this, &DelayLine::onDataReceived);
@@ -91,7 +91,7 @@ bool DelayLine::setDelay(float delayPS)
         return false;
     }
     
-    // 构建设置延迟命令
+    // 构建设置延迟命令：FC ID 02 xx xx xx FE
     QByteArray data = delayToBytes(delayPS);
     QByteArray frame = buildFrame(DELAY_CMD_SET_DELAY, data);
     
@@ -101,9 +101,51 @@ bool DelayLine::setDelay(float delayPS)
         return false;
     }
     
-    qDebug() << "设置延迟值:" << delayPS << "PS";
+    qDebug() << "设置延迟值:" << delayPS << "PS, 发送:" << frame.toHex(' ');
     m_currentStatus.currentDelay = delayPS;
     
+    return true;
+}
+
+bool DelayLine::increaseDelay(float delayPS)
+{
+    if (!isConnected()) {
+        setError("设备未连接");
+        return false;
+    }
+    
+    // 构建增加延迟命令：FC ID 03 xx xx xx FE
+    QByteArray data = delayToBytes(delayPS);
+    QByteArray frame = buildFrame(DELAY_CMD_INCREASE, data);
+    
+    qint64 written = m_serialPort->writeData(frame);
+    if (written != frame.size()) {
+        setError("发送增加延迟命令失败");
+        return false;
+    }
+    
+    qDebug() << "增加延迟值:" << delayPS << "PS";
+    return true;
+}
+
+bool DelayLine::decreaseDelay(float delayPS)
+{
+    if (!isConnected()) {
+        setError("设备未连接");
+        return false;
+    }
+    
+    // 构建减小延迟命令：FC ID 04 xx xx xx FE
+    QByteArray data = delayToBytes(delayPS);
+    QByteArray frame = buildFrame(DELAY_CMD_DECREASE, data);
+    
+    qint64 written = m_serialPort->writeData(frame);
+    if (written != frame.size()) {
+        setError("发送减小延迟命令失败");
+        return false;
+    }
+    
+    qDebug() << "减小延迟值:" << delayPS << "PS";
     return true;
 }
 
@@ -114,7 +156,7 @@ bool DelayLine::home()
         return false;
     }
     
-    // 构建归零命令
+    // 构建归零命令：FC ID 05 00 00 00 FE
     QByteArray data;
     data.append((char)0x00);
     data.append((char)0x00);
@@ -142,7 +184,7 @@ bool DelayLine::stop()
         return false;
     }
     
-    // 构建停止命令
+    // 构建停止命令：FC ID 09 00 00 00 FE
     QByteArray data;
     data.append((char)0x00);
     data.append((char)0x00);
@@ -169,7 +211,7 @@ bool DelayLine::queryPosition()
         return false;
     }
     
-    // 构建查询位置命令
+    // 构建查询位置命令：FC ID 0E 00 00 00 FE
     QByteArray data;
     data.append((char)0x00);
     data.append((char)0x00);
@@ -194,7 +236,7 @@ bool DelayLine::saveToEEPROM()
         return false;
     }
     
-    // 构建保存命令
+    // 构建保存命令：FC ID 30 00 00 00 FE
     QByteArray data;
     data.append((char)0x00);
     data.append((char)0x00);

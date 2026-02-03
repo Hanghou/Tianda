@@ -67,17 +67,48 @@ public:
     
     /**
      * @brief 设置电流
-     * @param current 电流值（种子源和Stokes单位为mA，FOPO单位为A）
+     * @param current 电流值（实际值，单位根据激光器类型：种子源和Stokes为mA，FOPO为A）
      * @return 成功返回true
      */
     bool setCurrent(float current);
     
-    // TODO: 后续实现的功能
-    // bool turnOn();
-    // bool turnOff();
-    // bool setTemperature(float temperature);
-    // bool queryStatus();
-    // LaserStatus getStatus() const;
+    /**
+     * @brief 设置电流最大值
+     * @param maxCurrent 最大电流值（单位与setCurrent相同）
+     * @return 成功返回true
+     */
+    bool setMaxCurrent(float maxCurrent);
+    
+    /**
+     * @brief 设置温度
+     * @param temperature 温度值（摄氏度）
+     * @return 成功返回true
+     */
+    bool setTemperature(float temperature);
+    
+    /**
+     * @brief 开启激光器
+     * @return 成功返回true
+     */
+    bool turnOn();
+    
+    /**
+     * @brief 关闭激光器
+     * @return 成功返回true
+     */
+    bool turnOff();
+    
+    /**
+     * @brief 查询激光器状态
+     * @return 成功返回true
+     */
+    bool queryStatus();
+    
+    /**
+     * @brief 获取当前状态
+     * @return 激光器状态
+     */
+    LaserStatus getStatus() const { return m_currentStatus; }
 
 signals:
     void statusUpdated(const LaserStatus &status);

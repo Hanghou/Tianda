@@ -1,7 +1,6 @@
 ﻿#include "integration.h"
 #include "ui_integration.h"
 #include "Communication/serial_port_base.h"
-#include "GalvoMirror/galvo_tcp_controller.h"
 #include <QMessageBox>
 #include <QDebug>
 #include <QSerialPort>
@@ -37,7 +36,7 @@ Integration::Integration(QWidget *parent)
     , m_stokesLaserDriver(nullptr)
     , m_spectrometer(nullptr)
     , m_stageController(nullptr)
-    , m_galvoTcp(nullptr)
+    , m_galvoMirror(nullptr)
     , m_delayLine(nullptr)
     , m_configManager(nullptr)
     , m_dataManager(nullptr)
@@ -75,6 +74,12 @@ Integration::Integration(QWidget *parent)
 {
     ui->setupUi(this);
     
+    // 窗口启动时自动最大化
+    showMaximized();
+    
+    // 初始化测量定时器
+    m_measureTimer = new QTimer(this);
+    
     // 初始化预设定时器
     m_powerPresetDelayTimer = new QTimer(this);
     m_delayPresetDelayTimerGalvo = new QTimer(this);
@@ -98,7 +103,7 @@ Integration::~Integration()
     delete m_stokesLaserDriver;
     delete m_spectrometer;
     delete m_stageController;
-    delete m_galvoTcp;
+    delete m_galvoMirror;
     delete m_delayLine;
     
     // 清理工具
@@ -125,7 +130,7 @@ void Integration::initDevices()
     
     // 创建其他设备实例
     m_stageController = new StageController(this);
-    m_galvoTcp = new GalvoTcpController(this);  // 创建 TCP 控制器
+    m_galvoMirror = new GalvoMirror(this);  // 创建振镜控制卡实例
     m_delayLine = new DelayLine(this);
     
     // 创建工具实例
@@ -138,6 +143,32 @@ void Integration::initDevices()
 
 void Integration::initUI()
 {
+    // 设置全局按钮样式（灰色背景，提升视觉效果）
+    QString buttonStyle = 
+        "QPushButton {"
+        "    background-color: #E0E0E0;"  // 浅灰色背景
+        "    border: 1px solid #A0A0A0;"  // 深灰色边框
+        "    border-radius: 3px;"         // 圆角
+        "    padding: 5px 10px;"          // 内边距
+        "    color: #000000;"             // 黑色文字
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #D0D0D0;"  // 鼠标悬停时稍深
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #C0C0C0;"  // 按下时更深
+        "}"
+        "QPushButton:disabled {"
+        "    background-color: #F0F0F0;"  // 禁用时更浅
+        "    color: #A0A0A0;"             // 禁用时文字变灰
+        "}";
+    
+    // 应用样式到所有按钮
+    QList<QPushButton*> buttons = this->findChildren<QPushButton*>();
+    for (QPushButton *btn : buttons) {
+        btn->setStyleSheet(buttonStyle);
+    }
+    
     // 初始化串口下拉框
     initSerialPortCombos();
     
@@ -146,6 +177,16 @@ void Integration::initUI()
     
     // 初始化预设表格
     initPresetTables();
+    
+    // 初始化预设置控件的显示状态（默认隐藏）
+    ui->groupBoxPowerPresetsNew->setVisible(false);       // 振镜页-光源功率预设置
+    ui->groupBoxDelayPresetsGalvo->setVisible(false);     // 振镜页-延迟线预设置
+    ui->groupBoxPowerPresetsStage->setVisible(false);     // 位移台页-电控平台与功率预设置
+    ui->groupBoxDelayPresetsNew->setVisible(false);       // 位移台页-延迟线预设置
+    
+    // 初始化底部控制按钮的显示状态（默认隐藏）
+    ui->widgetGalvoConfirmButton->setVisible(false);      // 振镜页-底部控制按钮
+    ui->widgetStageConfirmButton->setVisible(false);      // 位移台页-底部控制按钮
     
     // 更新连接状态
     updateConnectionStatus();
@@ -189,10 +230,10 @@ void Integration::initConnections()
     connect(m_stageController, &StageController::moveCompleted,
             this, &Integration::onStageMoveCompleted);
     
-    // 连接振镜信号（TCP方式）
-    connect(m_galvoTcp, &GalvoTcpController::statusChanged,
+    // 连接振镜控制卡信号
+    connect(m_galvoMirror, &GalvoMirror::statusChanged,
             this, &Integration::onGalvoStatusChanged);
-    connect(m_galvoTcp, &GalvoTcpController::errorOccurred,
+    connect(m_galvoMirror, &GalvoMirror::errorOccurred,
             this, &Integration::onDeviceError);
     
     // 连接延时线信号
@@ -202,6 +243,10 @@ void Integration::initConnections()
             this, &Integration::onDeviceError);
     connect(m_delayLine, &DelayLine::delayChanged,
             this, &Integration::onDelayChanged);
+    
+    // 连接测量定时器
+    connect(m_measureTimer, &QTimer::timeout,
+            this, &Integration::onMeasureTimeout);
     
     // 连接预设定时器
     connect(m_powerPresetDelayTimer, &QTimer::timeout,
@@ -632,64 +677,62 @@ void Integration::on_btnDisconnectStage_clicked()
 
 void Integration::on_btnConnectGalvo_clicked()
 {
+    // 获取IP地址配置
     QString ipAddress = getGalvoIPAddress();
     
-    // 检查是否输入了 IP 地址
+    // 检查IP地址是否有效
     if (ipAddress.isEmpty()) {
         QMessageBox::warning(this, "连接失败", 
-            "振镜：请先输入 IP 地址！\n\n请在 IP 地址输入框中输入振镜的 IP 地址。");
+            "振镜控制卡：请先输入IP地址！\n\n默认IP地址为：172.18.34.227");
         return;
     }
     
     // 显示连接中状态
     updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Connecting);
-    updateStatusBar("振镜正在连接（TCP 方式）...");
+    updateStatusBar("振镜控制卡正在连接...");
     
     // 处理 UI 事件
     QCoreApplication::processEvents();
     
     // 使用 QTimer 异步执行连接操作
     QTimer::singleShot(50, this, [this, ipAddress]() {
-        m_galvoTcp->setIPAddress(ipAddress);
-        m_galvoTcp->setPort(2000);  // 默认端口，可能需要调整
+        // 初始化控制卡
+        if (!m_galvoMirror->initialize()) {
+            updateStatusBar("振镜控制卡初始化失败");
+            updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Error);
+            QMessageBox::warning(this, "连接失败", "振镜控制卡初始化失败");
+            return;
+        }
+        
+        // 通过IP地址连接
+        bool success = m_galvoMirror->connectByIP(ipAddress);
         
         // 处理 UI 事件
         QCoreApplication::processEvents();
         
-        if (m_galvoTcp->connect()) {
-            updateStatusBar("振镜连接成功（TCP 方式）");
+        if (success && m_galvoMirror->isConnected()) {
+            updateStatusBar("振镜控制卡连接成功");
             updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Connected);
-            qDebug() << "振镜连接成功（TCP 方式）, IP:" << ipAddress;
+            qDebug() << "振镜控制卡连接成功，IP:" << ipAddress;
         } else {
-            updateStatusBar("振镜连接失败");
+            updateStatusBar("振镜控制卡连接失败");
             updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Error);
-            QString errorMsg = m_galvoTcp->getLastError();
-            qDebug() << "振镜连接失败：" << errorMsg;
-            
-            QString userMsg = "振镜连接失败（TCP 方式）\n\n";
-            userMsg += "错误信息：" + errorMsg + "\n\n";
-            userMsg += "可能原因：\n";
-            userMsg += "1. IP 地址错误（当前：" + ipAddress + "）\n";
-            userMsg += "2. 设备未上电或网络未连接\n";
-            userMsg += "3. 端口号不正确（当前使用：2000）\n";
-            userMsg += "4. 防火墙阻止连接\n";
-            userMsg += "5. 设备不在同一网段\n\n";
-            userMsg += "解决方法：\n";
-            userMsg += "• 检查设备是否上电\n";
-            userMsg += "• 确认 IP 地址正确\n";
-            userMsg += "• 尝试 ping " + ipAddress + "\n";
-            userMsg += "• 检查网络连接";
-            
-            QMessageBox::warning(this, "连接失败", userMsg);
+            qDebug() << "振镜控制卡连接失败";
+            QMessageBox::warning(this, "连接失败", 
+                QString("振镜控制卡连接失败\nIP地址：%1\n\n请检查：\n"
+                        "1. 控制卡是否上电\n"
+                        "2. 网线是否连接\n"
+                        "3. 电脑IP是否在172.18.34.2~123范围内\n"
+                        "4. IP地址是否正确").arg(ipAddress));
         }
     });
 }
 
 void Integration::on_btnDisconnectGalvo_clicked()
 {
-    m_galvoTcp->disconnect();
+    m_galvoMirror->disconnect();
     updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Disconnected);
-    updateStatusBar("振镜已断开");
+    updateStatusBar("振镜控制卡已断开");
 }
 
 // ========== 延时线连接/断开槽函数 ==========
@@ -765,12 +808,45 @@ void Integration::on_btnContinuousMeasure_clicked()
         return;
     }
     
-    // TODO: 实现连续测量模式
+    // 获取积分时间并检查有效性
+    int integrationTime = m_spectrometer->getIntegrationTime();
+    if (integrationTime <= 0) {
+        QMessageBox::warning(this, "错误", "无法获取积分时间，请检查光谱仪连接");
+        qDebug() << "获取积分时间失败，返回值:" << integrationTime;
+        return;
+    }
+    
+    // 启动连续测量定时器
+    // 默认间隔：积分时间 + 100ms 余量
+    int intervalMs = integrationTime / 1000 + 100;
+    
+    // 确保间隔至少为100ms
+    if (intervalMs < 100) {
+        intervalMs = 100;
+        qDebug() << "测量间隔过短，调整为最小值: 100ms";
+    }
+    
+    m_measureTimer->start(intervalMs);
+    m_isContinuousMeasuring = true;
+    m_isMeasuring = true;
+    
+    // 立即执行一次测量
     startMeasurement();
+    
+    updateStatusBar(QString("开始持续测量（间隔: %1 ms）").arg(intervalMs));
+    qDebug() << "开始持续测量，间隔:" << intervalMs << "ms";
 }
 
 void Integration::on_btnStopMeasure_clicked()
 {
+    // 停止连续测量定时器
+    if (m_isContinuousMeasuring) {
+        m_measureTimer->stop();
+        m_isContinuousMeasuring = false;
+        updateStatusBar("持续测量已停止");
+        qDebug() << "持续测量已停止";
+    }
+    
     stopMeasurement();
 }
 
@@ -956,8 +1032,10 @@ void Integration::exportPeaksToCSV()
     
     QTextStream out(&file);
     
+    // Qt 6: 设置编码为 UTF-8
+    out.setEncoding(QStringConverter::Utf8);
+    
     // 写入 UTF-8 BOM（Excel 识别中文）
-    out.setCodec("UTF-8");
     out << "\xEF\xBB\xBF";
     
     // 写入表头
@@ -1024,6 +1102,14 @@ void Integration::stopMeasurement()
     m_isMeasuring = false;
     updateStatusBar("停止光谱测量");
     qDebug() << "停止光谱测量";
+}
+
+void Integration::onMeasureTimeout()
+{
+    // 定时器触发，执行一次测量
+    if (m_isContinuousMeasuring && m_spectrometer->isConnected()) {
+        startMeasurement();
+    }
 }
 
 void Integration::saveSpectrum()
@@ -1134,26 +1220,35 @@ void Integration::onDelayChanged(float delayPS)
 
 void Integration::on_btnConfirmGalvoAngle_clicked()
 {
+    // 检查振镜是否连接
+    if (!m_galvoMirror->isConnected()) {
+        QMessageBox::warning(this, "错误", "振镜控制卡未连接！\n请先连接振镜控制卡。");
+        return;
+    }
+    
+    // 获取振镜角度输入
     bool ok;
     float angle = ui->lineEditGalvoAngle->text().toFloat(&ok);
     
     if (!ok) {
-        QMessageBox::warning(this, "错误", "请输入有效的角度值");
+        QMessageBox::warning(this, "输入错误", "请输入有效的振镜角度值！");
         return;
     }
     
-    // 检查连接状态
-    if (!m_galvoTcp->isConnected()) {
-        QMessageBox::warning(this, "错误", "振镜未连接");
-        return;
-    }
+    // 设置振镜角度（通过振镜跳转功能实现）
+    // 假设振镜角度对应XY坐标的转换关系
+    // 这里需要根据实际的振镜-角度映射关系进行转换
+    // 暂时使用简单的线性映射：angle -> (x, y, 0)
+    float x = angle * 10.0f;  // 示例映射，需要根据实际情况调整
+    float y = 0.0f;
+    float z = 0.0f;
     
-    // 设置角度
-    if (m_galvoTcp->setAngle(angle, 10.0f)) {
-        updateStatusBar("振镜角度设置成功: " + QString::number(angle) + "度");
+    if (m_galvoMirror->scannerJump(x, y, z)) {
+        updateStatusBar(QString("振镜角度已设置为: %1°").arg(angle));
         qDebug() << "振镜角度设置成功:" << angle << "度";
     } else {
-        QMessageBox::warning(this, "错误", "振镜角度设置失败：" + m_galvoTcp->getLastError());
+        QMessageBox::warning(this, "设置失败", "振镜角度设置失败！");
+        qDebug() << "振镜角度设置失败";
     }
 }
 
@@ -1306,7 +1401,7 @@ void Integration::onStageStatusChanged(DeviceStatus status)
 void Integration::onGalvoStatusChanged(DeviceStatus status)
 {
     updateStatusIndicator(ui->labelGalvoStatus, status);
-    qDebug() << "振镜状态改变:" << static_cast<int>(status);
+    qDebug() << "振镜控制卡状态变化:" << static_cast<int>(status);
 }
 
 void Integration::onDelayStatusChanged(DeviceStatus status)
@@ -1331,7 +1426,6 @@ void Integration::onDeviceError(const QString &error)
     updateStatusBar("设备错误: " + error);
 }
 
-
 // ========== 光谱图表相关函数 ==========
 
 void Integration::initSpectrumChart()
@@ -1339,11 +1433,12 @@ void Integration::initSpectrumChart()
     // 创建图表
     m_chart = new QChart();
     m_chart->setTitle("光谱数据");
-    m_chart->setAnimationOptions(QChart::NoAnimation);
+    m_chart->setAnimationOptions(QChart::NoAnimation);  // 禁用动画，提高性能
     
     // 创建数据系列
     m_series = new QLineSeries();
     m_series->setName("光谱强度");
+    m_series->setUseOpenGL(true);  // 启用OpenGL加速，大幅提升性能
     m_chart->addSeries(m_series);
     
     // 创建坐标轴
@@ -1371,9 +1466,11 @@ void Integration::initSpectrumChart()
     m_chart->legend()->setVisible(true);
     m_chart->legend()->setAlignment(Qt::AlignTop);
     
-    // 创建图表视图
+    // 创建标准图表视图
     m_chartView = new QChartView(m_chart);
-    m_chartView->setRenderHint(QPainter::Antialiasing);
+    m_chartView->setRenderHint(QPainter::Antialiasing);  // 抗锯齿
+    m_chartView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);  // 优化抗锯齿性能
+    m_chartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);  // 智能更新视口
     
     // 将图表视图添加到UI布局中
     QWidget *plotWidget = ui->widgetSpectrumPlot;
@@ -1395,32 +1492,39 @@ void Integration::initSpectrumChart()
         plotWidget->setLayout(layout);
     }
     
-    qDebug() << "光谱图表初始化完成 - 网格线和图例已启用";
+    qDebug() << "光谱图表初始化完成 - OpenGL加速已启用，支持高性能实时绘图";
 }
 
 void Integration::updateSpectrum(const QVector<int> &intensity)
 {
     if (!m_series) return;
     
-    m_series->clear();
-    
     int totalPixels = intensity.size();
+    
+    // 保存光谱数据
+    m_lastSpectrumData = intensity;
+    
+    // 使用 QVector<QPointF> 批量更新数据，避免多次重绘
+    QVector<QPointF> points;
+    points.reserve(totalPixels);  // 预分配内存，提高性能
     
     // 将像素转换为波长并添加数据点
     for (int i = 0; i < totalPixels; ++i) {
         // 波长范围：200-1100 nm
         double wavelength = 200.0 + (900.0 * i / (totalPixels - 1));
-        m_series->append(wavelength, intensity[i]);
+        points.append(QPointF(wavelength, intensity[i]));
     }
     
-    // 保存光谱数据
-    m_lastSpectrumData = intensity;
+    // 批量替换数据（只触发一次重绘）
+    m_series->replace(points);
     
     // 自动调整Y轴范围
     if (!intensity.isEmpty()) {
         int maxValue = *std::max_element(intensity.begin(), intensity.end());
         m_axisY->setRange(0, maxValue * 1.1);
     }
+    
+    qDebug() << "光谱数据已更新，数据点数量:" << totalPixels;
 }
 
 // ========== 串口配置获取函数 ==========
@@ -1540,13 +1644,13 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);  // 设置表头字体为9号
     m_powerPresetTable->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（所有列宽+40px）
-    m_powerPresetTable->setColumnWidth(0, 90);    // 序号列：50+40
-    m_powerPresetTable->setColumnWidth(1, 150);   // 振镜起始：110+40
-    m_powerPresetTable->setColumnWidth(2, 150);   // 振镜结束：110+40
-    m_powerPresetTable->setColumnWidth(3, 150);   // 种子源泵：110+40
-    m_powerPresetTable->setColumnWidth(4, 130);   // FOPO泵：90+40
-    m_powerPresetTable->setColumnWidth(5, 150);   // Stokes泵：110+40
+    // 设置列宽（调整为更紧凑的宽度）
+    m_powerPresetTable->setColumnWidth(0, 60);    // 序号列
+    m_powerPresetTable->setColumnWidth(1, 110);   // 振镜起始
+    m_powerPresetTable->setColumnWidth(2, 110);   // 振镜结束
+    m_powerPresetTable->setColumnWidth(3, 110);   // 种子源泵
+    m_powerPresetTable->setColumnWidth(4, 90);    // FOPO泵
+    m_powerPresetTable->setColumnWidth(5, 110);   // Stokes泵
     
     // 初始化振镜页 - 延迟线预设表格
     m_delayPresetTableGalvo = ui->tableWidgetDelayPresetsGalvo;
@@ -1561,10 +1665,10 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_delayPresetTableGalvo->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（所有列宽+40px）
-    m_delayPresetTableGalvo->setColumnWidth(0, 90);    // 序号列：50+40
-    m_delayPresetTableGalvo->setColumnWidth(1, 160);   // 振镜角度：120+40
-    m_delayPresetTableGalvo->setColumnWidth(2, 150);   // 延迟时间：110+40
+    // 设置列宽（调整为更紧凑的宽度）
+    m_delayPresetTableGalvo->setColumnWidth(0, 60);    // 序号列
+    m_delayPresetTableGalvo->setColumnWidth(1, 130);   // 振镜角度
+    m_delayPresetTableGalvo->setColumnWidth(2, 120);   // 延迟时间
     
     // 初始化位移台页 - 电控与功率预设表格
     m_powerPresetTableStage = ui->tableWidgetPowerPresetsStage;
@@ -1580,18 +1684,18 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_powerPresetTableStage->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（所有列宽+40px）
-    m_powerPresetTableStage->setColumnWidth(0, 90);    // 序号列：50+40
-    m_powerPresetTableStage->setColumnWidth(1, 160);   // 旋转台角度：120+40
-    m_powerPresetTableStage->setColumnWidth(2, 160);   // 位移台位置：120+40
-    m_powerPresetTableStage->setColumnWidth(3, 150);   // 种子源泵：110+40
-    m_powerPresetTableStage->setColumnWidth(4, 130);   // FOPO泵：90+40
-    m_powerPresetTableStage->setColumnWidth(5, 150);   // Stokes泵：110+40
+    // 设置列宽（调整为更紧凑的宽度）
+    m_powerPresetTableStage->setColumnWidth(0, 60);    // 序号列
+    m_powerPresetTableStage->setColumnWidth(1, 120);   // 旋转台角度
+    m_powerPresetTableStage->setColumnWidth(2, 120);   // 位移台位置
+    m_powerPresetTableStage->setColumnWidth(3, 110);   // 种子源泵
+    m_powerPresetTableStage->setColumnWidth(4, 90);    // FOPO泵
+    m_powerPresetTableStage->setColumnWidth(5, 110);   // Stokes泵
     
     // 初始化位移台页 - 延迟线预设表格
     m_delayPresetTable = ui->tableWidgetDelayPresets;
-    m_delayPresetTable->setColumnCount(3);  // 减少到3列：序号 + 2个数据列
-    m_delayPresetTable->setHorizontalHeaderLabels({"序号", "振镜角度(deg)", "延迟时间(PS)"});
+    m_delayPresetTable->setColumnCount(3);  // 3列：序号 + 旋转台角度 + 延迟时间
+    m_delayPresetTable->setHorizontalHeaderLabels({"序号", "旋转台角度(deg)", "延迟时间(PS)"});
     m_delayPresetTable->horizontalHeader()->setStretchLastSection(false);
     m_delayPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_delayPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -1601,15 +1705,42 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_delayPresetTable->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（所有列宽+40px）
-    m_delayPresetTable->setColumnWidth(0, 90);    // 序号列：50+40
-    m_delayPresetTable->setColumnWidth(1, 160);   // 振镜角度：120+40
-    m_delayPresetTable->setColumnWidth(2, 150);   // 延迟时间：110+40
+    // 设置列宽（调整为更紧凑的宽度）
+    m_delayPresetTable->setColumnWidth(0, 60);    // 序号列
+    m_delayPresetTable->setColumnWidth(1, 130);   // 旋转台角度
+    m_delayPresetTable->setColumnWidth(2, 120);   // 延迟时间
+    
+    // 设置所有表格的最小和最大高度，避免占用过多空间
+    m_powerPresetTable->setMinimumHeight(100);
+    m_powerPresetTable->setMaximumHeight(200);
+    m_delayPresetTableGalvo->setMinimumHeight(100);
+    m_delayPresetTableGalvo->setMaximumHeight(200);
+    m_powerPresetTableStage->setMinimumHeight(100);
+    m_powerPresetTableStage->setMaximumHeight(200);
+    m_delayPresetTable->setMinimumHeight(100);
+    m_delayPresetTable->setMaximumHeight(200);
     
     qDebug() << "预设表格初始化完成";
 }
 
 // ========== 预设管理槽函数 - 振镜页（光源功率预设） ==========
+
+void Integration::on_btnLightPowerPreset_clicked()
+{
+    // 切换光源功率预设置的显示/隐藏状态
+    bool isVisible = ui->groupBoxPowerPresetsNew->isVisible();
+    ui->groupBoxPowerPresetsNew->setVisible(!isVisible);
+    
+    // 更新底部控制按钮的显示状态
+    updateGalvoConfirmButtonVisibility();
+    
+    // 更新按钮文字提示
+    if (!isVisible) {
+        qDebug() << "显示光源功率预设置";
+    } else {
+        qDebug() << "隐藏光源功率预设置";
+    }
+}
 
 void Integration::on_btnAddPowerPresetRow_clicked()
 {
@@ -1669,8 +1800,8 @@ void Integration::on_btnStartPowerExecution_clicked()
     
     // 检查需要的设备是否连接
     QStringList missingDevices;
-    if (needsGalvo && !m_galvoTcp->isConnected()) {
-        missingDevices << "振镜";
+    if (needsGalvo && !m_galvoMirror->isConnected()) {
+        missingDevices << "振镜控制卡";
     }
     if (needsSeed && !m_seedLaserDriver->isConnected()) {
         missingDevices << "种子源激光器";
@@ -1767,6 +1898,43 @@ void Integration::onPowerPresetDelayTimeout()
 {
     if (!m_isPowerPresetExecuting && !m_isDelayPresetExecutingGalvo) {
         m_powerPresetDelayTimer->stop();
+        return;
+    }
+    
+    // 检查关键设备连接状态（如果预设中使用了该设备）
+    bool hasDisconnectedDevice = false;
+    QStringList disconnectedDevices;
+    
+    if (m_currentPowerPresetIndex < m_currentPowerPresets.size()) {
+        const PowerPreset &preset = m_currentPowerPresets[m_currentPowerPresetIndex];
+        if (preset.seedPumpCurrent != 0 && !m_seedLaserDriver->isConnected()) {
+            disconnectedDevices << "种子源激光器";
+            hasDisconnectedDevice = true;
+        }
+        if (preset.fopoPumpCurrent != 0 && !m_fopoLaserDriver->isConnected()) {
+            disconnectedDevices << "FOPO激光器";
+            hasDisconnectedDevice = true;
+        }
+        if (preset.stokesPumpCurrent != 0 && !m_stokesLaserDriver->isConnected()) {
+            disconnectedDevices << "Stokes激光器";
+            hasDisconnectedDevice = true;
+        }
+    }
+    
+    if (m_currentDelayPresetIndexGalvo < m_currentDelayPresetsGalvo.size()) {
+        const DelayPreset &preset = m_currentDelayPresetsGalvo[m_currentDelayPresetIndexGalvo];
+        if (preset.delayTime != 0 && !m_delayLine->isConnected()) {
+            disconnectedDevices << "延时线";
+            hasDisconnectedDevice = true;
+        }
+    }
+    
+    // 如果有设备断开，停止执行并提示
+    if (hasDisconnectedDevice) {
+        stopPowerPresetExecution();
+        QMessageBox::warning(this, "设备断开", 
+            QString("检测到以下设备断开连接，预设执行已停止：\n\n%1")
+            .arg(disconnectedDevices.join("\n")));
         return;
     }
     
@@ -1893,11 +2061,16 @@ void Integration::executePowerPreset(int index)
     QStringList failedList;
     QStringList skippedList;
     
-    // 1. 设置振镜角度（使用平均值）
+    // 1. 设置振镜角度（使用起始和结束角度的平均值）
     float galvoAngle = (preset.galvoAngleStart + preset.galvoAngleEnd) / 2.0f;
     if (galvoAngle != 0) {
-        if (m_galvoTcp->isConnected()) {
-            if (m_galvoTcp->setAngle(galvoAngle, 10.0f)) {
+        if (m_galvoMirror->isConnected()) {
+            // 将角度转换为振镜坐标
+            float x = galvoAngle * 10.0f;  // 示例映射，需要根据实际情况调整
+            float y = 0.0f;
+            float z = 0.0f;
+            
+            if (m_galvoMirror->scannerJump(x, y, z)) {
                 successList << QString("振镜角度: %.1f度").arg(galvoAngle);
             } else {
                 failedList << QString("振镜角度: %.1f度").arg(galvoAngle);
@@ -1989,6 +2162,23 @@ void Integration::stopPowerPresetExecution()
 
 // ========== 预设管理槽函数 - 振镜页（延迟线预设） ==========
 
+void Integration::on_btnDelayLinePreset_clicked()
+{
+    // 切换延迟线预设置的显示/隐藏状态
+    bool isVisible = ui->groupBoxDelayPresetsGalvo->isVisible();
+    ui->groupBoxDelayPresetsGalvo->setVisible(!isVisible);
+    
+    // 更新底部控制按钮的显示状态
+    updateGalvoConfirmButtonVisibility();
+    
+    // 更新按钮文字提示
+    if (!isVisible) {
+        qDebug() << "显示延迟线预设置（振镜页）";
+    } else {
+        qDebug() << "隐藏延迟线预设置（振镜页）";
+    }
+}
+
 void Integration::on_btnAddDelayPresetRowGalvo_clicked()
 {
     addDelayPresetRow(PresetPageType::GalvoPage);
@@ -2024,8 +2214,8 @@ void Integration::on_btnStartDelayExecutionGalvo_clicked()
     }
     
     QStringList missingDevices;
-    if (needsGalvo && !m_galvoTcp->isConnected()) {
-        missingDevices << "振镜";
+    if (needsGalvo && !m_galvoMirror->isConnected()) {
+        missingDevices << "振镜控制卡";
     }
     if (needsDelay && !m_delayLine->isConnected()) {
         missingDevices << "延时线";
@@ -2098,6 +2288,28 @@ void Integration::onDelayPresetDelayTimeoutGalvo()
         return;
     }
     
+    // 检查关键设备连接状态（如果预设中使用了该设备）
+    bool hasDisconnectedDevice = false;
+    QStringList disconnectedDevices;
+    
+    if (m_currentDelayPresetIndexGalvo < m_currentDelayPresetsGalvo.size()) {
+        const DelayPreset &preset = m_currentDelayPresetsGalvo[m_currentDelayPresetIndexGalvo];
+        if (preset.delayTime != 0 && !m_delayLine->isConnected()) {
+            disconnectedDevices << "延时线";
+            hasDisconnectedDevice = true;
+        }
+        // 振镜暂时不可用，不检查
+    }
+    
+    // 如果有设备断开，停止执行并提示
+    if (hasDisconnectedDevice) {
+        stopDelayPresetExecution(PresetPageType::GalvoPage);
+        QMessageBox::warning(this, "设备断开", 
+            QString("检测到以下设备断开连接，预设执行已停止：\n\n%1")
+            .arg(disconnectedDevices.join("\n")));
+        return;
+    }
+    
     m_currentDelayPresetIndexGalvo++;
     
     if (m_currentDelayPresetIndexGalvo >= m_currentDelayPresetsGalvo.size()) {
@@ -2110,6 +2322,23 @@ void Integration::onDelayPresetDelayTimeoutGalvo()
 }
 
 // ========== 预设管理槽函数 - 位移台页（电控与功率预设） ==========
+
+void Integration::on_btnStagePowerPreset_clicked()
+{
+    // 切换电控平台与功率预设置的显示/隐藏状态
+    bool isVisible = ui->groupBoxPowerPresetsStage->isVisible();
+    ui->groupBoxPowerPresetsStage->setVisible(!isVisible);
+    
+    // 更新底部控制按钮的显示状态
+    updateStageConfirmButtonVisibility();
+    
+    // 更新按钮文字提示
+    if (!isVisible) {
+        qDebug() << "显示电控平台与功率预设置";
+    } else {
+        qDebug() << "隐藏电控平台与功率预设置";
+    }
+}
 
 void Integration::on_btnAddPowerPresetRowStage_clicked()
 {
@@ -2231,6 +2460,43 @@ void Integration::onPowerPresetDelayTimeoutStage()
 {
     if (!m_isPowerPresetExecutingStage) {
         m_powerPresetDelayTimerStage->stop();
+        return;
+    }
+    
+    // 检查关键设备连接状态（如果预设中使用了该设备）
+    bool hasDisconnectedDevice = false;
+    QStringList disconnectedDevices;
+    
+    if (m_currentPowerPresetIndexStage < m_currentPowerPresetsStage.size()) {
+        const StagePowerPreset &preset = m_currentPowerPresetsStage[m_currentPowerPresetIndexStage];
+        if (preset.stageAngle != 0 && !m_stageController->isConnected()) {
+            disconnectedDevices << "旋转台";
+            hasDisconnectedDevice = true;
+        }
+        if (preset.stagePosition != 0 && !m_stageController->isConnected()) {
+            disconnectedDevices << "直线台";
+            hasDisconnectedDevice = true;
+        }
+        if (preset.seedPumpCurrent != 0 && !m_seedLaserDriver->isConnected()) {
+            disconnectedDevices << "种子源激光器";
+            hasDisconnectedDevice = true;
+        }
+        if (preset.fopoPumpCurrent != 0 && !m_fopoLaserDriver->isConnected()) {
+            disconnectedDevices << "FOPO激光器";
+            hasDisconnectedDevice = true;
+        }
+        if (preset.stokesPumpCurrent != 0 && !m_stokesLaserDriver->isConnected()) {
+            disconnectedDevices << "Stokes激光器";
+            hasDisconnectedDevice = true;
+        }
+    }
+    
+    // 如果有设备断开，停止执行并提示
+    if (hasDisconnectedDevice) {
+        stopPowerPresetExecutionStage();
+        QMessageBox::warning(this, "设备断开", 
+            QString("检测到以下设备断开连接，预设执行已停止：\n\n%1")
+            .arg(disconnectedDevices.join("\n")));
         return;
     }
     
@@ -2444,6 +2710,23 @@ void Integration::stopPowerPresetExecutionStage()
 
 // ========== 预设管理槽函数 - 位移台页（延迟线预设） ==========
 
+void Integration::on_btnStageDelayPreset_clicked()
+{
+    // 切换延迟线预设置的显示/隐藏状态
+    bool isVisible = ui->groupBoxDelayPresetsNew->isVisible();
+    ui->groupBoxDelayPresetsNew->setVisible(!isVisible);
+    
+    // 更新底部控制按钮的显示状态
+    updateStageConfirmButtonVisibility();
+    
+    // 更新按钮文字提示
+    if (!isVisible) {
+        qDebug() << "显示延迟线预设置（位移台页）";
+    } else {
+        qDebug() << "隐藏延迟线预设置（位移台页）";
+    }
+}
+
 void Integration::on_btnAddDelayPresetRow_clicked()
 {
     addDelayPresetRow(PresetPageType::StagePage);
@@ -2465,13 +2748,13 @@ void Integration::on_btnStartDelayExecution_clicked()
         return;
     }
     
-    // 智能检查
-    bool needsGalvo = false;
+    // 智能检查：分析预设中实际使用的设备
+    bool needsStage = false;
     bool needsDelay = false;
     
     for (const DelayPreset &preset : m_currentDelayPresets) {
-        if (preset.galvoAngle != 0) {
-            needsGalvo = true;
+        if (preset.stagePosition != 0) {
+            needsStage = true;
         }
         if (preset.delayTime != 0) {
             needsDelay = true;
@@ -2479,8 +2762,8 @@ void Integration::on_btnStartDelayExecution_clicked()
     }
     
     QStringList missingDevices;
-    if (needsGalvo && !m_galvoTcp->isConnected()) {
-        missingDevices << "振镜";
+    if (needsStage && !m_stageController->isConnected()) {
+        missingDevices << "旋转台";
     }
     if (needsDelay && !m_delayLine->isConnected()) {
         missingDevices << "延时线";
@@ -2550,6 +2833,28 @@ void Integration::onDelayPresetDelayTimeout()
 {
     if (!m_isDelayPresetExecuting) {
         m_delayPresetDelayTimer->stop();
+        return;
+    }
+    
+    // 检查关键设备连接状态（如果预设中使用了该设备）
+    bool hasDisconnectedDevice = false;
+    QStringList disconnectedDevices;
+    
+    if (m_currentDelayPresetIndex < m_currentDelayPresets.size()) {
+        const DelayPreset &preset = m_currentDelayPresets[m_currentDelayPresetIndex];
+        if (preset.delayTime != 0 && !m_delayLine->isConnected()) {
+            disconnectedDevices << "延时线";
+            hasDisconnectedDevice = true;
+        }
+        // 振镜暂时不可用，不检查
+    }
+    
+    // 如果有设备断开，停止执行并提示
+    if (hasDisconnectedDevice) {
+        stopDelayPresetExecution(PresetPageType::StagePage);
+        QMessageBox::warning(this, "设备断开", 
+            QString("检测到以下设备断开连接，预设执行已停止：\n\n%1")
+            .arg(disconnectedDevices.join("\n")));
         return;
     }
     
@@ -2630,10 +2935,19 @@ QList<DelayPreset> Integration::loadDelayPresetsFromTable(PresetPageType pageTyp
         DelayPreset preset;
         
         // 第0列是序号，跳过
-        // 读取振镜角度（第1列）
-        QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
-        if (lineEditAngle) {
-            preset.galvoAngle = lineEditAngle->text().toFloat();
+        
+        if (pageType == PresetPageType::GalvoPage) {
+            // 振镜页：读取振镜角度（第1列）
+            QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
+            if (lineEditAngle) {
+                preset.galvoAngle = lineEditAngle->text().toFloat();
+            }
+        } else {
+            // 位移台页：读取旋转台角度（第1列）
+            QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
+            if (lineEditAngle) {
+                preset.stagePosition = lineEditAngle->text().toFloat();
+            }
         }
         
         // 读取延迟时间（第2列）
@@ -2667,20 +2981,43 @@ void Integration::executeDelayPreset(PresetPageType pageType, int index)
     QStringList failedList;
     QStringList skippedList;
     
-    // 1. 设置振镜角度
-    if (preset.galvoAngle != 0) {
-        if (m_galvoTcp->isConnected()) {
-            if (m_galvoTcp->setAngle(preset.galvoAngle, 10.0f)) {
-                successList << QString("振镜角度: %.1f度").arg(preset.galvoAngle);
+    if (pageType == PresetPageType::GalvoPage) {
+        // 振镜页：设置振镜角度
+        if (preset.galvoAngle != 0) {
+            if (m_galvoMirror->isConnected()) {
+                // 将角度转换为振镜坐标
+                float x = preset.galvoAngle * 10.0f;  // 示例映射，需要根据实际情况调整
+                float y = 0.0f;
+                float z = 0.0f;
+                
+                if (m_galvoMirror->scannerJump(x, y, z)) {
+                    successList << QString("振镜角度: %.1f度").arg(preset.galvoAngle);
+                } else {
+                    failedList << QString("振镜角度: %.1f度").arg(preset.galvoAngle);
+                }
             } else {
-                failedList << QString("振镜角度: %.1f度").arg(preset.galvoAngle);
+                skippedList << QString("振镜角度: %.1f度（设备未连接）").arg(preset.galvoAngle);
             }
-        } else {
-            skippedList << QString("振镜角度: %.1f度（设备未连接）").arg(preset.galvoAngle);
+        }
+    } else {
+        // 位移台页：设置旋转台角度
+        if (preset.stagePosition != 0) {
+            if (m_stageController->isConnected()) {
+                // 使用旋转台模式
+                bool isRotation = true;
+                
+                if (m_stageController->moveAbsolute(preset.stagePosition, isRotation)) {
+                    successList << QString("旋转台角度: %.1f度").arg(preset.stagePosition);
+                } else {
+                    failedList << QString("旋转台角度: %.1f度").arg(preset.stagePosition);
+                }
+            } else {
+                skippedList << QString("旋转台角度: %.1f度（设备未连接）").arg(preset.stagePosition);
+            }
         }
     }
     
-    // 2. 设置延时线延迟
+    // 2. 设置延时线延迟（两个页面都需要）
     if (preset.delayTime != 0) {
         if (m_delayLine->isConnected()) {
             if (m_delayLine->setDelay(preset.delayTime)) {
@@ -2803,5 +3140,39 @@ void Integration::updateRowNumbers(QTableWidget *table)
         if (item) {
             item->setText(QString::number(row + 1));
         }
+    }
+}
+
+// ========== 预设置显示控制辅助函数 ==========
+
+void Integration::updateGalvoConfirmButtonVisibility()
+{
+    // 检查振镜页是否有任意一个预设置显示
+    bool anyVisible = ui->groupBoxPowerPresetsNew->isVisible() || 
+                      ui->groupBoxDelayPresetsGalvo->isVisible();
+    
+    // 更新底部控制按钮的显示状态
+    ui->widgetGalvoConfirmButton->setVisible(anyVisible);
+    
+    if (anyVisible) {
+        qDebug() << "振镜页：显示底部控制按钮";
+    } else {
+        qDebug() << "振镜页：隐藏底部控制按钮";
+    }
+}
+
+void Integration::updateStageConfirmButtonVisibility()
+{
+    // 检查位移台页是否有任意一个预设置显示
+    bool anyVisible = ui->groupBoxPowerPresetsStage->isVisible() || 
+                      ui->groupBoxDelayPresetsNew->isVisible();
+    
+    // 更新底部控制按钮的显示状态
+    ui->widgetStageConfirmButton->setVisible(anyVisible);
+    
+    if (anyVisible) {
+        qDebug() << "位移台页：显示底部控制按钮";
+    } else {
+        qDebug() << "位移台页：隐藏底部控制按钮";
     }
 }

@@ -95,6 +95,20 @@ public:
     bool startScan();
     
     /**
+     * @brief 开始连续采集光谱
+     * 使用命令0x19启动设备内部连续采集模式
+     * @param intervalMicros 采集时间间隔（微秒）
+     * @return 成功返回true
+     */
+    bool startContinuousScan(int intervalMicros);
+    
+    /**
+     * @brief 停止连续采集
+     * @return 成功返回true
+     */
+    bool stopContinuousScan();
+    
+    /**
      * @brief 设置采集平均次数
      * @param times 平均次数（1-1024）
      * @return 成功返回true

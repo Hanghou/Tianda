@@ -47,6 +47,20 @@ public:
     bool setDelay(float delayPS);
     
     /**
+     * @brief 增加延迟
+     * @param delayPS 增加的延迟值（PS）
+     * @return 成功返回true
+     */
+    bool increaseDelay(float delayPS);
+    
+    /**
+     * @brief 减小延迟
+     * @param delayPS 减小的延迟值（PS）
+     * @return 成功返回true
+     */
+    bool decreaseDelay(float delayPS);
+    
+    /**
      * @brief 归零
      * @return 成功返回true
      */

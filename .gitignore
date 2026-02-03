@@ -1,9 +1,15 @@
-# Qt Creator用户配置
+# Qt
 *.pro.user
 *.pro.user.*
 *.autosave
+*.qm
+*.qrc.depends
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
 
-# 编译产物
+# C++
 *.o
 *.obj
 *.exe
@@ -11,59 +17,69 @@
 *.so
 *.dylib
 *.a
-moc_*.cpp
-ui_*.h
-qrc_*.cpp
-Makefile
-Makefile.*
+*.lib
 
-# 调试文件
-*.pdb
-*.ilk
-*.exp
-
-# 临时文件
-*~
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
-*.tmp
-*.bak
-*.old
-*.backup
-
-# 归档文件夹
-archived_docs/
-create_doc/
-
-# IDE文件夹
-.vs/
-.vscode/
-.idea/
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
-*.sln
-
-# 构建目录
+# Build directories
 build/
 build-*/
 debug/
 release/
 Debug/
 Release/
-
-# Qt生成文件
-GeneratedFiles/
-ipch/
-
-# 日志文件
 *.log
 
-# 数据文件（如果不需要版本控制）
-*.csv
-*.dat
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 
-# 配置文件（如果包含敏感信息）
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*~
+*.swp
+*.swo
+*.tmp
+*.bak
+
+# Qt Creator
+*.pro.user*
+CMakeLists.txt.user*
+
+# Visual Studio
+.vs/
+*.VC.db
+*.VC.opendb
+*.sln
+*.vcproj
+
+# Output
+*.app
+*.dmg
+*.deb
+*.rpm
+
+# Documentation build
+docs/_build/
+docs/.doctrees/
+
+# Python (if any scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Backup files
+*.orig
+*.rej
+
+# Configuration files (optional, uncomment if needed)
 # config.ini
+# settings.json

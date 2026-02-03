@@ -1,228 +1,229 @@
-# 多模块光学测量系统整合平台
+# Integration - 光学系统集成控制软件
 
 ## 项目简介
+这是一个用于控制多个光学设备的集成软件，包括激光器、光谱仪、振镜、位移台和延迟线。基于 Qt 框架开发，提供友好的图形界面和强大的数据处理功能。
 
-本项目整合5个光学测量模块的参数设置和数据测量读写功能，提供统一的控制界面和数据管理平台。
+## 系统架构
 
-### 集成模块
+### 设备模块
+- **LaserDriver** - 激光器驱动（3个独立激光器：种子源、FOPO、Stokes）
+- **Spectrometer** - 光谱仪控制（OPTOSKY ATP 系列）
+- **GalvoMirror** - 振镜控制（思特 GMC 系列）
+- **StageController** - 位移台控制（旋转台 + 直线台）
+- **DelayLine** - 延迟线控制
 
-1. **激光器驱动板** (OHLD) - 串口通信
-2. **光纤光谱仪** (奥诺天成ATP系列) - 串口通信
-3. **电控位移台** (Thorlabs) - 串口通信
-4. **MEMS振镜** (大族思特) - DLL/网络通信
-5. **电动光纤延时线** (四川梓冠) - 串口通信
+### 核心模块
+- **Communication** - 通信基类（串口、设备基类）
+- **Utils** - 工具类（配置、数据管理、导出、预设）
 
-## 当前版本
+### UI 模块
+- **integration** - 主窗口（UI/）
+- **chart_dialog** - 图表对话框（UI/）
+- **custom_chart_view** - 自定义图表视图（UI/）
 
-**v1.4 - 延时线双页面支持与文档整理**
-
-### 已实现功能
-
-✅ 完整的项目架构  
-✅ 设备基类和串口通信基类  
-✅ 5个设备模块的基础框架  
-✅ 设备连接/断开功能  
-✅ 配置文件管理  
-✅ 基础UI界面  
-✅ 光谱仪串口通信协议（ATP V2.3）  
-✅ 光谱数据采集和显示（单次/连续）  
-✅ 峰值检测功能  
-✅ 串口协议实现（激光器、位移台、延时线）  
-✅ 振镜DLL封装  
-✅ **延时线延迟控制**  
-✅ **振镜角度控制**  
-✅ **位移台运动控制（旋转台+直线台）**  
-✅ **光谱仪完整测量功能**  
-
-### 待实现功能
-
-⏳ 激光器控制功能  
-⏳ 数据管理优化  
-⏳ UI界面完善  
-
-## 项目结构
+## 目录结构
 
 ```
 Integration/
-├── Communication/      # 通信基础层
-│   ├── device_base.h/cpp
-│   ├── serial_port_base.h/cpp
-│   └── error_codes.h
-├── LaserDriver/       # 激光器模块（串口）
-├── Spectrometer/      # 光谱仪模块（串口）
-├── StageController/   # 位移台模块（串口）
-├── GalvoMirror/       # 振镜模块（DLL/网络）
-├── DelayLine/         # 延时线模块（串口）
-├── Utils/             # 工具类
-│   ├── constants.h    # 全局常量定义
-│   ├── config_manager.h/cpp
-│   └── data_manager.h/cpp
-├── integration.h/cpp  # 主窗口
-├── main.cpp          # 程序入口
-└── Integration.pro   # 项目文件
+├── Communication/      # 通信基类
+│   ├── device_base.*
+│   ├── serial_port_base.*
+│   ├── error_codes.h
+│   └── README.md
+├── Utils/              # 工具类
+│   ├── config_manager.*
+│   ├── data_manager.*
+│   ├── csv_exporter.*
+│   ├── image_saver.*
+│   ├── preset_manager.*
+│   ├── constants.h
+│   └── README.md
+├── LaserDriver/        # 激光器模块
+│   ├── laser_driver.*
+│   ├── laser_protocol.h
+│   └── README.md
+├── Spectrometer/       # 光谱仪模块
+│   ├── spectrometer.*
+│   ├── spectrometer_protocol.h
+│   ├── Driver.dll/lib
+│   └── README.md
+├── GalvoMirror/        # 振镜模块
+│   ├── galvo_gmc_controller.*
+│   ├── library/        # DLL库文件
+│   └── README.md
+├── StageController/    # 位移台模块
+│   ├── stage_controller.*
+│   ├── stage_protocol.h
+│   └── README.md
+├── DelayLine/          # 延迟线模块
+│   ├── delay_line.*
+│   ├── delay_protocol.h
+│   └── README.md
+├── UI/                 # UI 模块
+│   ├── integration.*   # 主窗口
+│   ├── chart_dialog.*  # 图表对话框
+│   ├── custom_chart_view.* # 自定义图表
+│   └── README.md
+├── docs/               # 项目文档
+│   ├── guides/         # 使用指南
+│   ├── README.md
+│   └── SKILL.md
+├── main.cpp            # 程序入口
+└── Integration.pro     # Qt 项目文件
 ```
+
+## 编译要求
+
+### 基本要求
+- Qt 6.x
+- C++11 或更高
+- Windows 10/11
+
+### 编译器选择
+- **MinGW 64-bit** - 用于激光器、光谱仪、位移台、延迟线
+- **MSVC 2022 64-bit** - 用于振镜控制（必需）
+
+⚠️ **重要提示**：振镜模块使用的 DLL 库只支持 MSVC 编译器，如果需要使用振镜功能，必须使用 MSVC 编译整个项目。
+
+### 依赖库
+- Qt Widgets
+- Qt SerialPort
+- Qt Charts
+- Qt Network
 
 ## 快速开始
 
-### 环境要求
-
-- Qt 5.12+
-- Qt Creator 或 Visual Studio
-- Windows操作系统
-- 串口驱动
-
-### 编译步骤
-
-1. 打开Qt Creator
-2. 打开 `Integration.pro`
-3. 配置编译套件（64位，用于振镜DLL）
-4. 点击"构建"
-
-### 运行
-
-1. 确保DLL文件在正确位置（振镜需要）
-2. 连接硬件设备
-3. 运行程序
-4. 在"连接页"配置串口参数并点击"连接"按钮
-
-## 设备连接配置
-
-| 设备 | 通信方式 | 默认配置 |
-|------|----------|----------|
-| 激光器 | 串口 | COM3, 9600 |
-| 光谱仪 | 串口 | COM1, 115200 |
-| 位移台 | 串口 | COM4, 9600 |
-| 振镜 | DLL/网络 | 172.18.34.227 |
-| 延时线 | 串口 | COM5, 9600 |
-
-## 优化改进
-
-### v1.1 更新内容
-
-1. **代码优化**
-   - 创建全局常量文件，消除魔法数字
-   - 统一串口配置管理（SerialConfig结构体）
-   - 优化串口重试机制
-   - 修复波长计算范围（200-1100 nm）
-
-2. **协议实现**
-   - 实现激光器串口协议（帧构建、解析、校验）
-   - 实现位移台ASCII命令协议
-   - 实现延时线串口协议
-   - 完善光谱仪串口通信
-
-3. **DLL封装**
-   - 实现振镜DLL封装类（galvo_dll_wrapper.cpp）
-   - 支持DLL动态加载和函数解析
-
-4. **文档整理**
-   - 删除冗余的临时文档
-   - 保留核心文档（README、API文档、设计文档等）
-
-## 项目优化
-
-### 文件清理
-
-项目已进行文件优化，删除了冗余文件。如需执行优化：
-
-**方案1：完全删除（推荐）**
+### 1. 克隆项目
 ```bash
-执行优化.bat
+git clone <repository-url>
+cd Integration
 ```
 
-**方案2：归档保留**
-```bash
-归档优化.bat
+### 2. 打开项目
+使用 Qt Creator 打开 `Integration.pro`
+
+### 3. 选择编译器
+- 如果不使用振镜：选择 MinGW 64-bit
+- 如果使用振镜：选择 MSVC 2022 64-bit
+
+### 4. 编译运行
+```
+Build → Rebuild All
+Build → Run
 ```
 
-详见 [项目文件优化建议.md](项目文件优化建议.md)
+## 功能特性
 
-### 优化内容
-- 删除 create_doc 文件夹（200个参考文档和示例代码）
-- 删除 Spectrometer 中未使用的DLL文件（4个）
-- 删除用户配置文件 Integration.pro.user
-- 减少约70%的文件数量，节省30-50MB空间
+### 激光器控制
+- 三个独立激光器：种子源、FOPO、Stokes
+- 电流控制、温度控制
+- 开关控制
+- 状态查询
+- 单位：种子源和 Stokes 为 mA，FOPO 为 A
 
-## 编码规范
+### 光谱仪控制
+- 单次测量
+- 持续测量（实时，5-10 Hz）
+- 积分时间控制（1-65535 ms）
+- 峰值检测和 FWHM 计算
+- 数据导出（CSV）
+- 图表显示和交互
 
-项目所有源代码文件使用 **UTF-8 编码（无BOM）**，中文注释完全支持。
+### 振镜控制
+- 角度控制（X/Y 轴）
+- 扫描控制
+- 导引激光控制
+- 实时状态监控
 
-所有文件（包括第三方DLL头文件）已统一转换为UTF-8编码，无乱码问题。详见 `编码检查报告.md`。
+### 位移台控制
+- 旋转台角度控制（精度 0.01°）
+- 直线台位置控制（精度 0.01 mm）
+- 位置反馈
+- 移动状态监控
+
+### 延迟线控制
+- 延迟时间设置（皮秒级）
+- 实时反馈
+- 精度：1 ps
+
+### 预设管理
+- 光源功率预设（振镜页和位移台页）
+- 延迟线预设（振镜页和位移台页）
+- 电控平台预设（位移台页）
+- 批量执行
+- 动态控制
 
 ## 文档
 
-### 核心文档
-- [README.md](README.md) - 项目说明
-- [需求分析文档.md](需求分析文档.md) - 需求分析
-- [详细设计文档.md](详细设计文档.md) - 详细设计
-- [API文档.md](API文档.md) - API接口文档
-- [项目完成总结.md](项目完成总结.md) - 项目完成总结
+### 模块文档
+- [激光器模块](LaserDriver/README.md)
+- [光谱仪模块](Spectrometer/README.md)
+- [振镜模块](GalvoMirror/README.md)
+- [位移台模块](StageController/README.md)
+- [延迟线模块](DelayLine/README.md)
+- [通信基类](Communication/README.md)
+- [工具类](Utils/README.md)
 
-### 编译与使用
-- [编译步骤说明.md](编译步骤说明.md) - 编译步骤
-- [编码检查报告.md](编码检查报告.md) - 文件编码检查报告
+### 使用指南
+- [振镜启用指南](docs/guides/ENABLE_GALVO_GUIDE.md)
+- [振镜功能总结](docs/guides/GALVO_ENABLED_SUMMARY.md)
+- [光谱仪完成总结](docs/guides/SPECTROMETER_COMPLETION_SUMMARY.md)
+- [Git 推送指南](docs/guides/GIT_PUSH_GUIDE.txt)
 
-### 模块功能说明
-- [延时线功能完成说明.md](延时线功能完成说明.md) - 延时线模块
-- [振镜功能完成说明.md](振镜功能完成说明.md) - 振镜模块
-- [位移台功能完成说明.md](位移台功能完成说明.md) - 位移台模块
-- [光谱仪功能完成说明.md](光谱仪功能完成说明.md) - 光谱仪模块
+### 开发文档
+- [项目重构计划](docs/PROJECT_RESTRUCTURE_PLAN.md)
+- [快速重构指南](docs/QUICK_RESTRUCTURE_GUIDE.md)
+- [技能文档](docs/SKILL.md)
 
-## 开发计划
+## 配置 MSVC 编译器（振镜功能）
 
-- [x] 阶段1: 基础框架 (已完成)
-- [x] 阶段2: 串口协议实现 (已完成)
-- [x] 阶段3: 设备控制功能 (基本完成)
-  - [x] 延时线延迟控制
-  - [x] 振镜角度控制
-  - [x] 位移台运动控制
-  - [ ] 激光器控制
-- [ ] 阶段4: UI完善 (待开始)
-- [ ] 阶段5: 功能集成 (待开始)
+### 1. 安装 Visual Studio
+- 下载并安装 Visual Studio 2022
+- 选择"使用 C++ 的桌面开发"工作负载
 
-## 版本历史
+### 2. 配置 Qt Creator
+1. 打开 Qt Creator
+2. Tools → Options → Kits
+3. 添加新的 Kit：
+   - Compiler: MSVC 2022 64-bit
+   - Qt version: Qt 6.x MSVC 版本
+   - Debugger: CDB (Windows Debugger)
+4. 应用并关闭
 
-### v1.4 (2026-01-23)
-- ✅ 延时线双页面支持
-  - 振镜版和位移台版页面独立控制
-  - 双页面自动同步机制
-- ✅ 文档清理和整理
-  - 删除15个冗余文档
-  - 保留10个核心文档
-  - 文档精简60%
+### 3. 切换项目 Kit
+1. 在项目视图中选择 MSVC 64-bit Kit
+2. 重新编译项目
 
-### v1.3 (2026-01-23)
-- ✅ 完善光纤光谱仪功能
-  - ATP系列协议V2.3完整实现
-  - 同步采集优化（命令0x1E）
-  - 平均次数设置
-  - 波长标定系数获取
-- 创建光谱仪功能完成文档
+## 常见问题
 
-### v1.2 (2026-01-23)
-- ✅ 实现Thorlabs位移台控制功能
-  - 旋转台角度控制（ELL14）
-  - 直线台位置控制（ELL17/ELL20）
-  - Elliptec协议完整实现
-  - 位置转换算法
-- 创建位移台控制文档
+### Q: MinGW 编译振镜模块失败？
+A: 振镜 DLL 只支持 MSVC 编译器，必须切换到 MSVC Kit。
 
-### v1.1 (2026-01-23)
-- 代码优化和重构
-- 实现串口协议
-- 实现振镜DLL封装
-- 修复波长计算
-- 文档整理
+### Q: 找不到 DLL 文件？
+A: 确保 `GalvoMirror/library/` 目录下的 DLL 文件已复制到输出目录。
 
-### v1.0 (2026-01-14)
-- 初始版本
-- 完成基础框架
-- 实现设备连接/断开功能
+### Q: 三个激光器会混淆吗？
+A: 不会。三个激光器是完全独立的设备，各自有独立的 `LaserDriver` 实例和串口连接。
+
+### Q: 光谱仪持续测量频率？
+A: 约 5-10 Hz，取决于积分时间。采集间隔 = 积分时间 + 100ms。
 
 ## 许可证
-
-内部项目
+[待定]
 
 ## 联系方式
+[待定]
 
-查看项目文档获取更多信息。
+## 更新日志
+
+### 2024-02-03
+- ✅ 完成激光器驱动实现（OHLD 协议）
+- ✅ 完成光谱仪持续测量功能
+- ✅ 完成振镜 GMC 控制器集成
+- ✅ 完成项目文档结构重构
+- ✅ 为所有模块创建 README.md
+
+### 2024-01-XX
+- ✅ 初始项目搭建
+- ✅ 基础设备模块实现
+- ✅ UI 界面设计

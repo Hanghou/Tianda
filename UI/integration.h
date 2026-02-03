@@ -1,6 +1,11 @@
 #ifndef INTEGRATION_H
 #define INTEGRATION_H
 
+// 禁用 Windows min/max 宏，避免与 Qt Charts 冲突
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <QMainWindow>
 #include <QSerialPortInfo>
 #include <QTimer>
@@ -8,22 +13,20 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
-#include "LaserDriver/laser_driver.h"
-#include "Spectrometer/spectrometer.h"
-#include "StageController/stage_controller.h"
-#include "GalvoMirror/galvo_tcp_controller.h"
-#include "DelayLine/delay_line.h"
-#include "Utils/config_manager.h"
-#include "Utils/data_manager.h"
-#include "Utils/csv_exporter.h"
-#include "Utils/image_saver.h"
-#include "Utils/preset_manager.h"
+#include "../LaserDriver/laser_driver.h"
+#include "../Spectrometer/spectrometer.h"
+#include "../StageController/stage_controller.h"
+#include "../DelayLine/delay_line.h"
+#include "../GalvoMirror/galvo_mirror.h"
+#include "../Utils/config_manager.h"
+#include "../Utils/data_manager.h"
+#include "../Utils/csv_exporter.h"
+#include "../Utils/image_saver.h"
+#include "../Utils/preset_manager.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Integration; }
 QT_END_NAMESPACE
-
-QT_CHARTS_USE_NAMESPACE
 
 /**
  * @brief 预设页面类型枚举
@@ -76,6 +79,7 @@ private slots:
     void on_btnSingleMeasure_clicked();
     void on_btnContinuousMeasure_clicked();
     void on_btnStopMeasure_clicked();
+    void onMeasureTimeout();  // 测量定时器触发
     
     // 图表控制槽函数
     void on_btnSavePlot_clicked();
@@ -112,6 +116,7 @@ private slots:
     void on_btnConfirmStageStokesPump_clicked(); // 确认Stokes泵设置（位移台页）
     
     // 预设管理槽函数 - 振镜页（光源功率预设）
+    void on_btnLightPowerPreset_clicked();   // 光源功率预设置入口按钮（切换显示/隐藏）
     void on_btnAddPowerPresetRow_clicked();      // 添加功率预设行
     void on_btnClearPowerPresets_clicked();      // 清空所有功率预设
     void on_btnMoveUpPowerPreset_clicked();      // 上移功率预设行
@@ -123,6 +128,7 @@ private slots:
     void on_btnConfirmDelayPreset_clicked();     // 确定按钮（振镜页底部执行按钮）
     
     // 预设管理槽函数 - 振镜页（延迟线预设）
+    void on_btnDelayLinePreset_clicked();        // 延迟线预设置入口按钮（切换显示/隐藏）
     void on_btnAddDelayPresetRowGalvo_clicked();      // 添加延迟预设行
     void on_btnClearDelayPresetsGalvo_clicked();      // 清空所有延迟预设
     void on_btnMoveUpDelayPresetGalvo_clicked();      // 上移延迟预设行
@@ -133,6 +139,7 @@ private slots:
     void onDelayPresetDelayTimeoutGalvo();            // 延迟预设间隔定时器触发
     
     // 预设管理槽函数 - 位移台页（电控与功率预设）
+    void on_btnStagePowerPreset_clicked();       // 电控平台与功率预设置入口按钮（切换显示/隐藏）
     void on_btnAddPowerPresetRowStage_clicked();      // 添加功率预设行
     void on_btnClearPowerPresetsStage_clicked();      // 清空所有功率预设
     void on_btnMoveUpPowerPresetStage_clicked();      // 上移功率预设行
@@ -144,6 +151,7 @@ private slots:
     void on_btnConfirmStagePreset_clicked();          // 确定按钮（位移台页底部执行按钮）
     
     // 预设管理槽函数 - 位移台页（延迟线预设）
+    void on_btnStageDelayPreset_clicked();       // 延迟线预设置入口按钮（切换显示/隐藏）
     void on_btnAddDelayPresetRow_clicked();      // 添加延迟预设行
     void on_btnClearDelayPresets_clicked();      // 清空所有延迟预设
     void on_btnMoveUpDelayPreset_clicked();      // 上移延迟预设行
@@ -238,6 +246,10 @@ private:
     void deleteRow(QTableWidget *table, int row);      // 删除行
     void swapRows(QTableWidget *table, int row1, int row2);  // 交换两行
     void updateRowNumbers(QTableWidget *table);        // 更新序号
+    
+    // 预设置显示控制辅助函数
+    void updateGalvoConfirmButtonVisibility();         // 更新振镜页底部按钮显示状态
+    void updateStageConfirmButtonVisibility();         // 更新位移台页底部按钮显示状态
     QList<PowerPreset> loadPowerPresetsFromTable();  // 从表格加载功率预设
     QList<StagePowerPreset> loadPowerPresetsFromTableStage();  // 从表格加载功率预设（位移台页）
     void executePowerPreset(int index);          // 执行单个功率预设
@@ -266,7 +278,7 @@ private:
     LaserDriver *m_stokesLaserDriver;  // Stokes激光器
     Spectrometer *m_spectrometer;
     StageController *m_stageController;
-    class GalvoTcpController *m_galvoTcp;    // 振镜（TCP方式）
+    GalvoMirror *m_galvoMirror;        // 振镜控制卡
     DelayLine *m_delayLine;
     
     // 工具模块

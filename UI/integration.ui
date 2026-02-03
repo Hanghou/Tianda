@@ -13,7 +13,6 @@
   <property name="font">
    <font>
     <family>微软雅黑</family>
-    <weight>75</weight>
     <bold>true</bold>
    </font>
   </property>
@@ -21,16 +20,16 @@
    <string>多模块光学测量系统整合平台</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_35">
+   <layout class="QVBoxLayout" name="verticalLayout_35" stretch="6,1">
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout" stretch="3,5">
       <item>
        <widget class="QFrame" name="frameLeftPanel">
         <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
+         <enum>QFrame::Shape::StyledPanel</enum>
         </property>
         <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
+         <enum>QFrame::Shadow::Raised</enum>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_31">
          <item>
@@ -86,6 +85,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSeedLaserPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>串口:</string>
                   </property>
@@ -96,6 +101,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSeedLaserBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>波特率:</string>
                   </property>
@@ -107,7 +118,7 @@
                 <item>
                  <spacer name="horizontalSpacerSeedLaser">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -176,6 +187,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelFOPOLaserPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>串口:</string>
                   </property>
@@ -186,6 +203,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelFOPOLaserBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>波特率:</string>
                   </property>
@@ -197,7 +220,7 @@
                 <item>
                  <spacer name="horizontalSpacerFOPOLaser">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -266,6 +289,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelStokesLaserPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>串口:</string>
                   </property>
@@ -276,6 +305,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelStokesLaserBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>波特率:</string>
                   </property>
@@ -287,7 +322,7 @@
                 <item>
                  <spacer name="horizontalSpacerStokesLaser">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -356,6 +391,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSpectrometerPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>串口:</string>
                   </property>
@@ -366,6 +407,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSpectrometerBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>波特率:</string>
                   </property>
@@ -377,7 +424,7 @@
                 <item>
                  <spacer name="horizontalSpacerSpectrometer">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -446,6 +493,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelStagePort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>串口:</string>
                   </property>
@@ -456,6 +509,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelStageBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>波特率:</string>
                   </property>
@@ -467,7 +526,7 @@
                 <item>
                  <spacer name="horizontalSpacerStage">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -551,7 +610,7 @@
                 <item>
                  <spacer name="horizontalSpacerGalvo">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -620,6 +679,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelDelayPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>串口:</string>
                   </property>
@@ -630,6 +695,12 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="labelDelayBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
                   <property name="text">
                    <string>波特率:</string>
                   </property>
@@ -641,7 +712,7 @@
                 <item>
                  <spacer name="horizontalSpacerDelay">
                   <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                   <enum>Qt::Orientation::Horizontal</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -683,7 +754,7 @@
              <item>
               <spacer name="verticalSpacerConnection">
                <property name="orientation">
-                <enum>Qt::Vertical</enum>
+                <enum>Qt::Orientation::Vertical</enum>
                </property>
                <property name="sizeHint" stdset="0">
                 <size>
@@ -703,10 +774,10 @@
              <item>
               <widget class="QFrame" name="frameGalvoControlPanel">
                <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
+                <enum>QFrame::Shape::StyledPanel</enum>
                </property>
                <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
+                <enum>QFrame::Shadow::Raised</enum>
                </property>
                <layout class="QVBoxLayout" name="verticalLayout_13" stretch="4,1">
                 <item>
@@ -719,16 +790,16 @@
                        <string>振镜角度控制</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignCenter</set>
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_4">
                        <item>
                         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,2,1">
-                         <item alignment="Qt::AlignHCenter">
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
                           <widget class="QLabel" name="labelGalvoAngle">
                            <property name="font">
                             <font>
-                             <weight>50</weight>
+                             <family>微软雅黑</family>
                              <bold>false</bold>
                             </font>
                            </property>
@@ -740,11 +811,11 @@
                          <item>
                           <widget class="QLineEdit" name="lineEditGalvoAngle"/>
                          </item>
-                         <item alignment="Qt::AlignHCenter">
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
                           <widget class="QLabel" name="labelGalvoAngleUnit">
                            <property name="font">
                             <font>
-                             <weight>50</weight>
+                             <family>微软雅黑</family>
                              <bold>false</bold>
                             </font>
                            </property>
@@ -755,11 +826,11 @@
                          </item>
                         </layout>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmGalvoAngle">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -777,16 +848,16 @@
                        <string>延时线控制</string>
                       </property>
                       <property name="alignment">
-                       <set>Qt::AlignCenter</set>
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_8">
                        <item>
                         <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,2,1">
-                         <item alignment="Qt::AlignHCenter">
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
                           <widget class="QLabel" name="labelTimeDelay">
                            <property name="font">
                             <font>
-                             <weight>50</weight>
+                             <family>微软雅黑</family>
                              <bold>false</bold>
                             </font>
                            </property>
@@ -798,11 +869,11 @@
                          <item>
                           <widget class="QLineEdit" name="lineEditTimeDelay"/>
                          </item>
-                         <item alignment="Qt::AlignHCenter">
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
                           <widget class="QLabel" name="labelTimeDelayUnit">
                            <property name="font">
                             <font>
-                             <weight>50</weight>
+                             <family>微软雅黑</family>
                              <bold>false</bold>
                             </font>
                            </property>
@@ -813,11 +884,11 @@
                          </item>
                         </layout>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmTimeDelay">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -837,16 +908,16 @@
                      <string>泵功率设置</string>
                     </property>
                     <property name="alignment">
-                     <set>Qt::AlignCenter</set>
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_5">
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelSeedPump">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -858,11 +929,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditSeedPump"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelSeedPumpUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -871,7 +942,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmSeedPump">
                          <property name="minimumSize">
                           <size>
@@ -881,7 +952,7 @@
                          </property>
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -894,11 +965,11 @@
                      </item>
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelFOPOPump">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -910,11 +981,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditFOPOPump"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelFOPOPumpUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -923,7 +994,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmFOPOPump">
                          <property name="minimumSize">
                           <size>
@@ -933,7 +1004,7 @@
                          </property>
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -946,11 +1017,11 @@
                      </item>
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStokesPump">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -962,11 +1033,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStokesPump"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStokesPumpUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -975,7 +1046,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmStokesPump">
                          <property name="minimumSize">
                           <size>
@@ -985,7 +1056,7 @@
                          </property>
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1004,11 +1075,11 @@
                 <item>
                  <widget class="QWidget" name="widgetGalvoPresetButtons" native="true">
                   <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,1">
-                   <item alignment="Qt::AlignHCenter">
+                   <item alignment="Qt::AlignmentFlag::AlignHCenter">
                     <widget class="QPushButton" name="btnLightPowerPreset">
                      <property name="font">
                       <font>
-                       <weight>50</weight>
+                       <family>微软雅黑</family>
                        <bold>false</bold>
                       </font>
                      </property>
@@ -1017,11 +1088,11 @@
                      </property>
                     </widget>
                    </item>
-                   <item alignment="Qt::AlignHCenter">
+                   <item alignment="Qt::AlignmentFlag::AlignHCenter">
                     <widget class="QPushButton" name="btnDelayLinePreset">
                      <property name="font">
                       <font>
-                       <weight>50</weight>
+                       <family>微软雅黑</family>
                        <bold>false</bold>
                       </font>
                      </property>
@@ -1039,152 +1110,21 @@
              <item>
               <widget class="QFrame" name="frameGalvoPresetPanel">
                <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
+                <enum>QFrame::Shape::StyledPanel</enum>
                </property>
                <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
+                <enum>QFrame::Shadow::Raised</enum>
                </property>
                <layout class="QVBoxLayout" name="verticalLayout_14">
                 <item>
                  <widget class="QGroupBox" name="groupBoxPowerPresetsNew">
                   <property name="title">
-                   <string>预设置执行控制（同步执行功率和延迟线预设）</string>
+                   <string>光源功率预设置</string>
                   </property>
                   <property name="alignment">
-                   <set>Qt::AlignCenter</set>
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_PowerPresets">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_PowerPresetControls">
-                     <item>
-                      <widget class="QLabel" name="labelPowerTimeInterval">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>时间间隔:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="spinBoxPowerTimeInterval">
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="suffix">
-                        <string> 秒</string>
-                       </property>
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>3600</number>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStartPowerExecution">
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>开始执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStopPowerExecution">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>停止执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelPowerStatusText">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>状态:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelPowerPresetStatus">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>就绪</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacerPowerPreset">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
                    <item>
                     <widget class="QTableWidget" name="tableWidgetPowerPresets">
                      <property name="minimumSize">
@@ -1195,14 +1135,16 @@
                      </property>
                      <property name="font">
                       <font>
+                       <family>微软雅黑</family>
                        <pointsize>9</pointsize>
+                       <bold>true</bold>
                       </font>
                      </property>
                      <property name="midLineWidth">
                       <number>0</number>
                      </property>
                      <property name="editTriggers">
-                      <set>QAbstractItemView::AllEditTriggers</set>
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
                      </property>
                      <property name="alternatingRowColors">
                       <bool>true</bool>
@@ -1257,7 +1199,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1276,7 +1218,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1295,7 +1237,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1314,7 +1256,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1333,7 +1275,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1345,7 +1287,7 @@
                      <item>
                       <spacer name="horizontalSpacerPowerButtons">
                        <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
+                        <enum>Qt::Orientation::Horizontal</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
@@ -1363,143 +1305,12 @@
                 <item>
                  <widget class="QGroupBox" name="groupBoxDelayPresetsGalvo">
                   <property name="title">
-                   <string>延迟线预设置（动态）</string>
+                   <string>延迟线预设置</string>
                   </property>
                   <property name="alignment">
-                   <set>Qt::AlignCenter</set>
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_DelayPresetsGalvo">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_DelayPresetControlsGalvo">
-                     <item>
-                      <widget class="QLabel" name="labelDelayTimeIntervalGalvo">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>时间间隔:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="spinBoxDelayTimeIntervalGalvo">
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="suffix">
-                        <string> 秒</string>
-                       </property>
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>3600</number>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStartDelayExecutionGalvo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>开始执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStopDelayExecutionGalvo">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>停止执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelDelayStatusTextGalvo">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>状态:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelDelayPresetStatusGalvo">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>就绪</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacerDelayPresetGalvo">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
                    <item>
                     <widget class="QTableWidget" name="tableWidgetDelayPresetsGalvo">
                      <property name="minimumSize">
@@ -1510,11 +1321,13 @@
                      </property>
                      <property name="font">
                       <font>
+                       <family>微软雅黑</family>
                        <pointsize>9</pointsize>
+                       <bold>true</bold>
                       </font>
                      </property>
                      <property name="editTriggers">
-                      <set>QAbstractItemView::AllEditTriggers</set>
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
                      </property>
                      <property name="alternatingRowColors">
                       <bool>true</bool>
@@ -1554,7 +1367,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1573,7 +1386,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1592,7 +1405,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1611,7 +1424,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1630,7 +1443,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1642,7 +1455,7 @@
                      <item>
                       <spacer name="horizontalSpacerDelayButtonsGalvo">
                        <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
+                        <enum>Qt::Orientation::Horizontal</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
@@ -1663,7 +1476,7 @@
                    <item>
                     <spacer name="horizontalSpacerGalvoConfirm1">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -1677,7 +1490,7 @@
                     <widget class="QLabel" name="labelGalvoTimeInterval">
                      <property name="font">
                       <font>
-                       <weight>50</weight>
+                       <family>微软雅黑</family>
                        <bold>false</bold>
                       </font>
                      </property>
@@ -1705,7 +1518,7 @@
                    <item>
                     <spacer name="horizontalSpacerGalvoConfirm2">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -1725,7 +1538,7 @@
                      </property>
                      <property name="font">
                       <font>
-                       <weight>50</weight>
+                       <family>微软雅黑</family>
                        <bold>false</bold>
                       </font>
                      </property>
@@ -1737,7 +1550,7 @@
                    <item>
                     <spacer name="horizontalSpacerGalvoConfirm3">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -1753,7 +1566,7 @@
                 <item>
                  <spacer name="verticalSpacer">
                   <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                   <enum>Qt::Orientation::Vertical</enum>
                   </property>
                   <property name="sizeHint" stdset="0">
                    <size>
@@ -1776,10 +1589,10 @@
              <item>
               <widget class="QFrame" name="frameStageControlPanel">
                <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
+                <enum>QFrame::Shape::StyledPanel</enum>
                </property>
                <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
+                <enum>QFrame::Shadow::Raised</enum>
                </property>
                <layout class="QHBoxLayout" name="horizontalLayout_77">
                 <item>
@@ -1790,16 +1603,16 @@
                      <string>旋转台角度</string>
                     </property>
                     <property name="alignment">
-                     <set>Qt::AlignCenter</set>
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_24">
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="1,2,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageAngle">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1811,11 +1624,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStageAngle"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageAngleUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1826,11 +1639,11 @@
                        </item>
                       </layout>
                      </item>
-                     <item alignment="Qt::AlignHCenter">
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
                       <widget class="QPushButton" name="btnConfirmStageAngle">
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1848,16 +1661,16 @@
                      <string>位移平台位置</string>
                     </property>
                     <property name="alignment">
-                     <set>Qt::AlignCenter</set>
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_25" stretch="0,0">
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_72" stretch="1,2,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStagePosition">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1869,11 +1682,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStagePosition"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStagePositionUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1884,11 +1697,11 @@
                        </item>
                       </layout>
                      </item>
-                     <item alignment="Qt::AlignHCenter">
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
                       <widget class="QPushButton" name="btnConfirmStagePosition">
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -1903,29 +1716,29 @@
                   <item>
                    <widget class="QWidget" name="widgetStagePresetButtons" native="true">
                     <layout class="QVBoxLayout" name="verticalLayout_23">
-                     <item alignment="Qt::AlignHCenter">
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
                       <widget class="QPushButton" name="btnStagePowerPreset">
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
                        <property name="text">
-                        <string>电控平台与功率预设置</string>
+                        <string>电控平台与功率预设置入口</string>
                        </property>
                       </widget>
                      </item>
-                     <item alignment="Qt::AlignHCenter">
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
                       <widget class="QPushButton" name="btnStageDelayPreset">
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
                        <property name="text">
-                        <string>延迟线预设置</string>
+                        <string>延迟线预设置入口</string>
                        </property>
                       </widget>
                      </item>
@@ -1942,16 +1755,16 @@
                      <string>泵功率设置</string>
                     </property>
                     <property name="alignment">
-                     <set>Qt::AlignCenter</set>
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_27">
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_74" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageSeedPump">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1963,11 +1776,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStageSeedPump"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageSeedPumpUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1976,7 +1789,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmStageSeedPump">
                          <property name="minimumSize">
                           <size>
@@ -1986,7 +1799,7 @@
                          </property>
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -1999,11 +1812,11 @@
                      </item>
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_75" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageFOPOPump">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2015,11 +1828,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStageFOPOPump"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageFOPOPumpUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2028,7 +1841,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmStageFOPOPump">
                          <property name="minimumSize">
                           <size>
@@ -2038,7 +1851,7 @@
                          </property>
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2051,11 +1864,11 @@
                      </item>
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_76" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageStokesPump">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2067,11 +1880,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStageStokesPump"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageStokesPumpUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2080,7 +1893,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QPushButton" name="btnConfirmStageStokesPump">
                          <property name="minimumSize">
                           <size>
@@ -2090,7 +1903,7 @@
                          </property>
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2110,16 +1923,16 @@
                      <string>延迟线设置</string>
                     </property>
                     <property name="alignment">
-                     <set>Qt::AlignCenter</set>
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
                     </property>
                     <layout class="QVBoxLayout" name="verticalLayout_26">
                      <item>
                       <layout class="QHBoxLayout" name="horizontalLayout_73" stretch="1,2,1,1">
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageTimeDelay">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2131,11 +1944,11 @@
                        <item>
                         <widget class="QLineEdit" name="lineEditStageTimeDelay"/>
                        </item>
-                       <item alignment="Qt::AlignHCenter">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageTimeDelayUnit">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2148,7 +1961,7 @@
                         <widget class="QPushButton" name="btnConfirmStageTimeDelay">
                          <property name="font">
                           <font>
-                           <weight>50</weight>
+                           <family>微软雅黑</family>
                            <bold>false</bold>
                           </font>
                          </property>
@@ -2170,152 +1983,21 @@
              <item>
               <widget class="QFrame" name="frameStagePresetPanel">
                <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
+                <enum>QFrame::Shape::StyledPanel</enum>
                </property>
                <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
+                <enum>QFrame::Shadow::Raised</enum>
                </property>
                <layout class="QVBoxLayout" name="verticalLayout_15">
                 <item>
                  <widget class="QGroupBox" name="groupBoxPowerPresetsStage">
                   <property name="title">
-                   <string>预设置执行控制（同步执行电控平台、功率和延迟线预设）</string>
+                   <string>电控平台与功率预设置</string>
                   </property>
                   <property name="alignment">
-                   <set>Qt::AlignCenter</set>
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_PowerPresetsStage">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_PowerPresetControlsStage">
-                     <item>
-                      <widget class="QLabel" name="labelPowerTimeIntervalStage">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>时间间隔:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="spinBoxPowerTimeIntervalStage">
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="suffix">
-                        <string> 秒</string>
-                       </property>
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>3600</number>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStartPowerExecutionStage">
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>开始执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStopPowerExecutionStage">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>停止执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelPowerStatusTextStage">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>状态:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelPowerPresetStatusStage">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>就绪</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacerPowerPresetStage">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
                    <item>
                     <widget class="QTableWidget" name="tableWidgetPowerPresetsStage">
                      <property name="minimumSize">
@@ -2326,11 +2008,13 @@
                      </property>
                      <property name="font">
                       <font>
+                       <family>微软雅黑</family>
                        <pointsize>9</pointsize>
+                       <bold>true</bold>
                       </font>
                      </property>
                      <property name="editTriggers">
-                      <set>QAbstractItemView::AllEditTriggers</set>
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
                      </property>
                      <property name="alternatingRowColors">
                       <bool>true</bool>
@@ -2385,7 +2069,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2404,7 +2088,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2423,7 +2107,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2442,7 +2126,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2461,7 +2145,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2473,7 +2157,7 @@
                      <item>
                       <spacer name="horizontalSpacerPowerButtonsStage">
                        <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
+                        <enum>Qt::Orientation::Horizontal</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
@@ -2491,143 +2175,12 @@
                 <item>
                  <widget class="QGroupBox" name="groupBoxDelayPresetsNew">
                   <property name="title">
-                   <string>延迟线预设置（动态）</string>
+                   <string>延迟线预设置</string>
                   </property>
                   <property name="alignment">
-                   <set>Qt::AlignCenter</set>
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_DelayPresets">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_DelayPresetControls">
-                     <item>
-                      <widget class="QLabel" name="labelDelayTimeInterval">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>时间间隔:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QSpinBox" name="spinBoxDelayTimeInterval">
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="suffix">
-                        <string> 秒</string>
-                       </property>
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>3600</number>
-                       </property>
-                       <property name="value">
-                        <number>2</number>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStartDelayExecution">
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>开始执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="btnStopDelayExecution">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>80</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>停止执行</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelDelayStatusText">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>状态:</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="labelDelayPresetStatus">
-                       <property name="font">
-                        <font>
-                         <weight>50</weight>
-                         <bold>false</bold>
-                        </font>
-                       </property>
-                       <property name="visible">
-                        <bool>false</bool>
-                       </property>
-                       <property name="text">
-                        <string>就绪</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacerDelayPreset">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
                    <item>
                     <widget class="QTableWidget" name="tableWidgetDelayPresets">
                      <property name="minimumSize">
@@ -2638,11 +2191,13 @@
                      </property>
                      <property name="font">
                       <font>
+                       <family>微软雅黑</family>
                        <pointsize>9</pointsize>
+                       <bold>true</bold>
                       </font>
                      </property>
                      <property name="editTriggers">
-                      <set>QAbstractItemView::AllEditTriggers</set>
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
                      </property>
                      <property name="alternatingRowColors">
                       <bool>true</bool>
@@ -2660,7 +2215,7 @@
                      </column>
                      <column>
                       <property name="text">
-                       <string>振镜角度(deg)</string>
+                       <string>旋转台角度(deg)</string>
                       </property>
                      </column>
                      <column>
@@ -2682,7 +2237,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2701,7 +2256,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2720,7 +2275,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2739,7 +2294,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2758,7 +2313,7 @@
                        </property>
                        <property name="font">
                         <font>
-                         <weight>50</weight>
+                         <family>微软雅黑</family>
                          <bold>false</bold>
                         </font>
                        </property>
@@ -2770,7 +2325,7 @@
                      <item>
                       <spacer name="horizontalSpacerDelayButtons">
                        <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
+                        <enum>Qt::Orientation::Horizontal</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
@@ -2791,7 +2346,7 @@
                    <item>
                     <spacer name="horizontalSpacerStageLeft">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -2805,7 +2360,7 @@
                     <widget class="QLabel" name="labelStageTimeInterval">
                      <property name="font">
                       <font>
-                       <weight>50</weight>
+                       <family>微软雅黑</family>
                        <bold>false</bold>
                       </font>
                      </property>
@@ -2830,7 +2385,20 @@
                      </property>
                     </widget>
                    </item>
-                   <item alignment="Qt::AlignHCenter">
+                   <item>
+                    <spacer name="horizontalSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item alignment="Qt::AlignmentFlag::AlignHCenter">
                     <widget class="QPushButton" name="btnConfirmStagePreset">
                      <property name="minimumSize">
                       <size>
@@ -2840,7 +2408,7 @@
                      </property>
                      <property name="font">
                       <font>
-                       <weight>50</weight>
+                       <family>微软雅黑</family>
                        <bold>false</bold>
                       </font>
                      </property>
@@ -2852,7 +2420,7 @@
                    <item>
                     <spacer name="horizontalSpacerStageRight">
                      <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
+                      <enum>Qt::Orientation::Horizontal</enum>
                      </property>
                      <property name="sizeHint" stdset="0">
                       <size>
@@ -2864,6 +2432,19 @@
                    </item>
                   </layout>
                  </widget>
+                </item>
+                <item>
+                 <spacer name="verticalSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
                 </item>
                </layout>
               </widget>
@@ -2878,21 +2459,21 @@
       <item>
        <widget class="QFrame" name="frameRightPanel">
         <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
+         <enum>QFrame::Shape::StyledPanel</enum>
         </property>
         <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
+         <enum>QFrame::Shadow::Raised</enum>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_2" stretch="3,1">
          <item>
           <widget class="QWidget" name="widgetImageTitle" native="true">
-           <layout class="QVBoxLayout" name="verticalLayout_33">
-            <item alignment="Qt::AlignHCenter">
+           <layout class="QVBoxLayout" name="verticalLayout_33" stretch="0,1,0">
+            <item alignment="Qt::AlignmentFlag::AlignHCenter">
              <widget class="QLabel" name="labelImageDisplay">
               <property name="font">
                <font>
+                <family>微软雅黑</family>
                 <pointsize>12</pointsize>
-                <weight>75</weight>
                 <bold>true</bold>
                </font>
               </property>
@@ -2954,7 +2535,7 @@
                <widget class="QLabel" name="labelIntensityThreshold">
                 <property name="font">
                  <font>
-                  <weight>50</weight>
+                  <family>微软雅黑</family>
                   <bold>false</bold>
                  </font>
                 </property>
@@ -2980,7 +2561,7 @@
                <widget class="QLabel" name="labelPeakWidth">
                 <property name="font">
                  <font>
-                  <weight>50</weight>
+                  <family>微软雅黑</family>
                   <bold>false</bold>
                  </font>
                 </property>
@@ -3012,7 +2593,7 @@
               <item>
                <spacer name="horizontalSpacerPeakSettings">
                 <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+                 <enum>Qt::Orientation::Horizontal</enum>
                 </property>
                 <property name="sizeHint" stdset="0">
                  <size>
@@ -3029,14 +2610,14 @@
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>200</height>
+                <height>0</height>
                </size>
               </property>
               <property name="editTriggers">
-               <set>QAbstractItemView::NoEditTriggers</set>
+               <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
               </property>
               <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectRows</enum>
+               <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
               </property>
               <property name="sortingEnabled">
                <bool>true</bool>
@@ -3105,7 +2686,7 @@
           <widget class="QLabel" name="labelScanInterval">
            <property name="font">
             <font>
-             <weight>50</weight>
+             <family>微软雅黑</family>
              <bold>false</bold>
             </font>
            </property>
@@ -3135,7 +2716,7 @@
           <widget class="QLabel" name="labelIntegrationTime">
            <property name="font">
             <font>
-             <weight>50</weight>
+             <family>微软雅黑</family>
              <bold>false</bold>
             </font>
            </property>
@@ -3191,7 +2772,7 @@
         <widget class="QLabel" name="labelMeasureStatus">
          <property name="font">
           <font>
-           <weight>50</weight>
+           <family>微软雅黑</family>
            <bold>false</bold>
           </font>
          </property>
@@ -3199,7 +2780,7 @@
           <string>就绪</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -3214,7 +2795,7 @@
      <x>0</x>
      <y>0</y>
      <width>1492</width>
-     <height>17</height>
+     <height>18</height>
     </rect>
    </property>
   </widget>

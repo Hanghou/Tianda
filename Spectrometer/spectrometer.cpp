@@ -260,6 +260,80 @@ bool Spectrometer::startScan()
     return false;
 }
 
+bool Spectrometer::startContinuousScan(int intervalMicros)
+{
+    if (!isConnected()) {
+        setError("设备未连接");
+        return false;
+    }
+    
+    // 构建命令0x19的数据：开始连续采集
+    QByteArray data;
+    data.append((char)0x00);  // 0x00 = 开始采集
+    
+    // 采集时间间隔（4字节，大端序，单位：微秒）
+    data.append((intervalMicros >> 24) & 0xFF);
+    data.append((intervalMicros >> 16) & 0xFF);
+    data.append((intervalMicros >> 8) & 0xFF);
+    data.append(intervalMicros & 0xFF);
+    
+    if (!sendCommand(0x19, data)) {
+        return false;
+    }
+    
+    SpectrometerFrame response;
+    if (!receiveResponse(response, 1000)) {
+        setError("启动连续采集超时");
+        return false;
+    }
+    
+    // 检查返回值：0x00表示成功
+    if (response.data.size() > 0 && (quint8)response.data[0] == 0x00) {
+        qDebug() << "连续采集已启动，间隔:" << intervalMicros << "us";
+        return true;
+    }
+    
+    setError("启动连续采集失败");
+    return false;
+}
+
+bool Spectrometer::stopContinuousScan()
+{
+    if (!isConnected()) {
+        setError("设备未连接");
+        return false;
+    }
+    
+    // 构建命令0x19的数据：停止连续采集
+    QByteArray data;
+    data.append((char)0x01);  // 0x01 = 停止采集
+    
+    // 填充4字节（间隔参数，停止时无意义）
+    data.append((char)0x00);
+    data.append((char)0x00);
+    data.append((char)0x00);
+    data.append((char)0x00);
+    
+    if (!sendCommand(0x19, data)) {
+        return false;
+    }
+    
+    SpectrometerFrame response;
+    if (!receiveResponse(response, 1000)) {
+        setError("停止连续采集超时");
+        return false;
+    }
+    
+    // 检查返回值：0x00表示成功
+    if (response.data.size() > 0 && (quint8)response.data[0] == 0x00) {
+        qDebug() << "连续采集已停止";
+        return true;
+    }
+    
+    setError("停止连续采集失败");
+    return false;
+}
+
 bool Spectrometer::setAverageTimes(int times)
 {
     if (!isConnected()) {

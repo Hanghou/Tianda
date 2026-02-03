@@ -47,11 +47,13 @@ struct PowerPresetGroup {
  */
 struct DelayPreset {
     QString name;                  // 预设名称（可选）
-    float galvoAngle;              // 振镜角度 (deg)
+    float galvoAngle;              // 振镜角度 (deg) - 用于振镜页
+    float stagePosition;           // 旋转台角度 (deg) - 用于位移台页
     float delayTime;               // 延迟线时延 (PS)
     
     DelayPreset()
         : galvoAngle(0.0f)
+        , stagePosition(0.0f)
         , delayTime(0.0f)
     {}
 };
