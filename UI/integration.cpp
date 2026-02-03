@@ -188,6 +188,9 @@ void Integration::initUI()
     ui->widgetGalvoConfirmButton->setVisible(false);      // 振镜页-底部控制按钮
     ui->widgetStageConfirmButton->setVisible(false);      // 位移台页-底部控制按钮
     
+    // 初始化所有状态指示器的大小和样式（统一为20x20的圆形指示灯）
+    initStatusIndicators();
+    
     // 更新连接状态
     updateConnectionStatus();
 }
@@ -378,6 +381,22 @@ void Integration::updateConnectionStatus()
 void Integration::updateStatusBar(const QString &message)
 {
     statusBar()->showMessage(message, 3000);
+}
+
+void Integration::initStatusIndicators()
+{
+    // 初始化所有状态指示器为统一的大小和默认状态（灰色-未连接）
+    // 这样确保程序启动时所有指示灯都是统一的20x20大小
+    
+    updateStatusIndicator(ui->labelSeedLaserStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelFOPOLaserStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelStokesLaserStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelSpectrometerStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelStageStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Disconnected);
+    
+    qDebug() << "状态指示器初始化完成";
 }
 
 void Integration::updateStatusIndicator(QLabel *indicator, DeviceStatus status)
@@ -1644,13 +1663,13 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);  // 设置表头字体为9号
     m_powerPresetTable->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（调整为更紧凑的宽度）
-    m_powerPresetTable->setColumnWidth(0, 60);    // 序号列
-    m_powerPresetTable->setColumnWidth(1, 110);   // 振镜起始
-    m_powerPresetTable->setColumnWidth(2, 110);   // 振镜结束
-    m_powerPresetTable->setColumnWidth(3, 110);   // 种子源泵
-    m_powerPresetTable->setColumnWidth(4, 90);    // FOPO泵
-    m_powerPresetTable->setColumnWidth(5, 110);   // Stokes泵
+    // 设置列宽（缩小10px以适应屏幕）
+    m_powerPresetTable->setColumnWidth(0, 50);    // 序号列 (60-10)
+    m_powerPresetTable->setColumnWidth(1, 100);   // 振镜起始 (110-10)
+    m_powerPresetTable->setColumnWidth(2, 100);   // 振镜结束 (110-10)
+    m_powerPresetTable->setColumnWidth(3, 100);   // 种子源泵 (110-10)
+    m_powerPresetTable->setColumnWidth(4, 80);    // FOPO泵 (90-10)
+    m_powerPresetTable->setColumnWidth(5, 100);   // Stokes泵 (110-10)
     
     // 初始化振镜页 - 延迟线预设表格
     m_delayPresetTableGalvo = ui->tableWidgetDelayPresetsGalvo;
@@ -1684,13 +1703,13 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_powerPresetTableStage->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（调整为更紧凑的宽度）
-    m_powerPresetTableStage->setColumnWidth(0, 60);    // 序号列
-    m_powerPresetTableStage->setColumnWidth(1, 120);   // 旋转台角度
-    m_powerPresetTableStage->setColumnWidth(2, 120);   // 位移台位置
-    m_powerPresetTableStage->setColumnWidth(3, 110);   // 种子源泵
-    m_powerPresetTableStage->setColumnWidth(4, 90);    // FOPO泵
-    m_powerPresetTableStage->setColumnWidth(5, 110);   // Stokes泵
+    // 设置列宽（缩小10px以适应屏幕）
+    m_powerPresetTableStage->setColumnWidth(0, 50);    // 序号列 (60-10)
+    m_powerPresetTableStage->setColumnWidth(1, 110);   // 旋转台角度 (120-10)
+    m_powerPresetTableStage->setColumnWidth(2, 110);   // 位移台位置 (120-10)
+    m_powerPresetTableStage->setColumnWidth(3, 100);   // 种子源泵 (110-10)
+    m_powerPresetTableStage->setColumnWidth(4, 80);    // FOPO泵 (90-10)
+    m_powerPresetTableStage->setColumnWidth(5, 100);   // Stokes泵 (110-10)
     
     // 初始化位移台页 - 延迟线预设表格
     m_delayPresetTable = ui->tableWidgetDelayPresets;

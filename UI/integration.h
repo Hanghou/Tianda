@@ -199,6 +199,7 @@ private:
     // UI更新函数
     void updateConnectionStatus();
     void updateStatusBar(const QString &message);
+    void initStatusIndicators();  // 初始化所有状态指示器
     void updateStatusIndicator(class QLabel *indicator, DeviceStatus status);
     
     // 串口配置获取函数

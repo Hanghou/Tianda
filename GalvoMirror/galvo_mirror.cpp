@@ -1,8 +1,15 @@
 #include "galvo_mirror.h"
-// TODO: 在Windows平台下取消注释以下头文件
-// #include "library/HM_HashuScan.h"
-// #include "library/HM_HashuUDM.h"
 #include <QDebug>
+#include <QWidget>
+
+// 解决 byte 类型冲突：在包含 windows.h 之前定义
+#ifndef BYTE_DEFINED
+#define BYTE_DEFINED
+typedef unsigned char byte;
+#endif
+
+#include <windows.h>  // Windows 头文件以支持 HWND 类型
+#include "library/HM_HashuScan.h"
 
 /**
  * @brief 构造函数
@@ -39,11 +46,20 @@ bool GalvoMirror::initialize()
 {
     qDebug() << "GalvoMirror: 初始化振镜控制卡";
     
-    // TODO: 调用 HM_InitBoard 初始化通信
-    // 需要窗口句柄，在Qt中需要特殊处理
+    // 调用 HM_InitBoard 初始化通信
+    // 注意：需要窗口句柄，这里传入 nullptr，DLL 会创建隐藏窗口
+    int result = HM_InitBoard(nullptr);
     
-    setStatus(DeviceStatus::Ready);
-    return true;
+    if (result == HM_OK) {
+        qDebug() << "GalvoMirror: 初始化成功";
+        setStatus(DeviceStatus::Ready);
+        return true;
+    } else {
+        qDebug() << "GalvoMirror: 初始化失败，错误码:" << result;
+        setStatus(DeviceStatus::Error);
+        setError("初始化失败");
+        return false;
+    }
 }
 
 /**
@@ -53,15 +69,40 @@ bool GalvoMirror::connect()
 {
     qDebug() << "GalvoMirror: 连接振镜控制卡";
     
-    // TODO: 实现连接逻辑
-    // 1. 搜索设备
-    // 2. 连接到指定IP或索引
+    // 先搜索设备
+    int deviceCount = 0;
+    int result = HM_GetDeviceCount(&deviceCount);
     
-    m_isConnected = true;
-    setStatus(DeviceStatus::Connected);
-    emit connected();
+    if (result != HM_OK || deviceCount == 0) {
+        qDebug() << "GalvoMirror: 未找到设备";
+        setError("未找到振镜控制卡设备");
+        setStatus(DeviceStatus::Error);
+        return false;
+    }
     
-    return true;
+    m_deviceCount = deviceCount;
+    qDebug() << "GalvoMirror: 找到" << deviceCount << "个设备";
+    
+    // 默认连接第一个设备
+    if (m_ipIndex < 0 || m_ipIndex >= deviceCount) {
+        m_ipIndex = 0;
+    }
+    
+    result = HM_ConnectTo(m_ipIndex);
+    
+    if (result == HM_OK) {
+        m_isConnected = true;
+        setStatus(DeviceStatus::Connected);
+        emit connected();
+        qDebug() << "GalvoMirror: 连接成功，设备索引:" << m_ipIndex;
+        return true;
+    } else {
+        m_isConnected = false;
+        setStatus(DeviceStatus::Error);
+        setError(QString("连接失败，错误码: %1").arg(result));
+        qDebug() << "GalvoMirror: 连接失败，错误码:" << result;
+        return false;
+    }
 }
 
 /**
@@ -80,7 +121,14 @@ void GalvoMirror::disconnect()
         m_progressTimer->stop();
     }
     
-    // TODO: 调用 HM_DisconnectTo 断开连接
+    // 调用 HM_DisconnectTo 断开连接
+    int result = HM_DisconnectTo(m_ipIndex);
+    
+    if (result == HM_OK) {
+        qDebug() << "GalvoMirror: 断开连接成功";
+    } else {
+        qDebug() << "GalvoMirror: 断开连接失败，错误码:" << result;
+    }
     
     m_isConnected = false;
     setStatus(DeviceStatus::Disconnected);
@@ -114,10 +162,19 @@ bool GalvoMirror::searchDevices()
 {
     qDebug() << "GalvoMirror: 搜索控制卡设备";
     
-    // TODO: 实现设备搜索
     // 调用 HM_GetDeviceCount 获取设备数量
+    int deviceCount = 0;
+    int result = HM_GetDeviceCount(&deviceCount);
     
-    return true;
+    if (result == HM_OK) {
+        m_deviceCount = deviceCount;
+        qDebug() << "GalvoMirror: 找到" << deviceCount << "个设备";
+        return true;
+    } else {
+        qDebug() << "GalvoMirror: 搜索设备失败，错误码:" << result;
+        setError(QString("搜索设备失败，错误码: %1").arg(result));
+        return false;
+    }
 }
 
 /**
@@ -138,9 +195,26 @@ bool GalvoMirror::connectByIP(const QString& ipAddress)
     
     m_ipAddress = ipAddress;
     
-    // TODO: 调用 HM_ConnectByIpStr
+    // 将QString转换为char*
+    QByteArray ipBytes = ipAddress.toLocal8Bit();
+    char* ipStr = ipBytes.data();
     
-    return true;
+    // 调用 HM_ConnectByIpStr
+    int result = HM_ConnectByIpStr(ipStr);
+    
+    if (result == HM_OK) {
+        m_isConnected = true;
+        setStatus(DeviceStatus::Connected);
+        emit connected();
+        qDebug() << "GalvoMirror: 通过IP连接成功";
+        return true;
+    } else {
+        m_isConnected = false;
+        setStatus(DeviceStatus::Error);
+        setError(QString("通过IP连接失败，错误码: %1").arg(result));
+        qDebug() << "GalvoMirror: 通过IP连接失败，错误码:" << result;
+        return false;
+    }
 }
 
 /**
@@ -162,8 +236,9 @@ bool GalvoMirror::connectByIndex(int ipIndex)
  */
 int GalvoMirror::getConnectionStatus() const
 {
-    // TODO: 调用 HM_GetConnectStatus
-    return m_isConnected ? 1 : 0;
+    // 调用 HM_GetConnectStatus
+    int status = HM_GetConnectStatus(m_ipIndex);
+    return status;
 }
 
 /**
@@ -271,9 +346,23 @@ bool GalvoMirror::setOffset(float offsetX, float offsetY, float offsetZ)
 {
     qDebug() << "GalvoMirror: 设置偏移:" << offsetX << offsetY << offsetZ;
     
-    // TODO: 调用 HM_SetOffset
+    if (!m_isConnected) {
+        qDebug() << "GalvoMirror: 设备未连接";
+        setError("设备未连接");
+        return false;
+    }
     
-    return true;
+    // 调用 HM_SetOffset
+    int result = HM_SetOffset(m_ipIndex, offsetX, offsetY, offsetZ);
+    
+    if (result == HM_OK) {
+        qDebug() << "GalvoMirror: 设置偏移成功";
+        return true;
+    } else {
+        qDebug() << "GalvoMirror: 设置偏移失败，错误码:" << result;
+        setError(QString("设置偏移失败，错误码: %1").arg(result));
+        return false;
+    }
 }
 
 /**
@@ -330,9 +419,23 @@ bool GalvoMirror::scannerJump(float x, float y, float z)
 {
     qDebug() << "GalvoMirror: 振镜跳转:" << x << y << z;
     
-    // TODO: 调用 HM_ScannerJump
+    if (!m_isConnected) {
+        qDebug() << "GalvoMirror: 设备未连接";
+        setError("设备未连接");
+        return false;
+    }
     
-    return true;
+    // 调用 HM_ScannerJump
+    int result = HM_ScannerJump(m_ipIndex, x, y, z);
+    
+    if (result == HM_OK) {
+        qDebug() << "GalvoMirror: 振镜跳转成功";
+        return true;
+    } else {
+        qDebug() << "GalvoMirror: 振镜跳转失败，错误码:" << result;
+        setError(QString("振镜跳转失败，错误码: %1").arg(result));
+        return false;
+    }
 }
 
 /**
@@ -342,9 +445,23 @@ bool GalvoMirror::setGuideLaser(bool enable)
 {
     qDebug() << "GalvoMirror: 红光预览:" << enable;
     
-    // TODO: 调用 HM_SetGuidLaser
+    if (!m_isConnected) {
+        qDebug() << "GalvoMirror: 设备未连接";
+        setError("设备未连接");
+        return false;
+    }
     
-    return true;
+    // 调用 HM_SetGuidLaser
+    int result = HM_SetGuidLaser(m_ipIndex, enable);
+    
+    if (result == HM_OK) {
+        qDebug() << "GalvoMirror: 红光预览设置成功";
+        return true;
+    } else {
+        qDebug() << "GalvoMirror: 红光预览设置失败，错误码:" << result;
+        setError(QString("红光预览设置失败，错误码: %1").arg(result));
+        return false;
+    }
 }
 
 // ========== 校正表管理 ==========
@@ -525,8 +642,14 @@ bool GalvoMirror::hasSDCard() const
  */
 int GalvoMirror::getWorkStatus() const
 {
-    // TODO: 调用 HM_GetWorkStatus
-    return 1;  // 1:ready, 2:run, 3:alarm
+    if (!m_isConnected) {
+        return 0;
+    }
+    
+    // 调用 HM_GetWorkStatus
+    // 返回值：1=ready, 2=run, 3=alarm
+    int status = HM_GetWorkStatus(m_ipIndex);
+    return status;
 }
 
 /**
