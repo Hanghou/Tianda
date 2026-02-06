@@ -66,8 +66,10 @@ private slots:
     void on_btnDisconnectFOPOLaser_clicked();
     void on_btnConnectStokesLaser_clicked();
     void on_btnDisconnectStokesLaser_clicked();
-    void on_btnConnectSpectrometer_clicked();
-    void on_btnDisconnectSpectrometer_clicked();
+    void on_btnConnectSpectrometerFOPO_clicked();
+    void on_btnDisconnectSpectrometerFOPO_clicked();
+    void on_btnConnectSpectrometerStokes_clicked();
+    void on_btnDisconnectSpectrometerStokes_clicked();
     void on_btnConnectStage_clicked();
     void on_btnDisconnectStage_clicked();
     void on_btnConnectGalvo_clicked();
@@ -75,21 +77,33 @@ private slots:
     void on_btnConnectDelay_clicked();
     void on_btnDisconnectDelay_clicked();
     
-    // 光谱仪测量控制槽函数
-    void on_btnSingleMeasure_clicked();
-    void on_btnContinuousMeasure_clicked();
-    void on_btnStopMeasure_clicked();
-    void onMeasureTimeout();  // 测量定时器触发
+    // FOPO路光谱仪测量控制槽函数
+    void on_btnSingleMeasureFOPO_clicked();
+    void on_btnContinuousMeasureFOPO_clicked();
+    void on_btnStopMeasureFOPO_clicked();
+    void onMeasureTimeoutFOPO();
     
-    // 图表控制槽函数
-    void on_btnSavePlot_clicked();
-    void on_btnResetView_clicked();
-    void on_btnClearPlot_clicked();
+    // Stokes路光谱仪测量控制槽函数
+    void on_btnSingleMeasureStokes_clicked();
+    void on_btnContinuousMeasureStokes_clicked();
+    void on_btnStopMeasureStokes_clicked();
+    void onMeasureTimeoutStokes();
     
-    // 峰值检测槽函数
-    void on_btnDetectPeaks_clicked();
-    void on_btnExportPeaks_clicked();
-    void on_btnClearPeaks_clicked();
+    // FOPO路图表控制槽函数
+    void on_btnSavePlotFOPO_clicked();
+    void on_btnResetViewFOPO_clicked();
+    void on_btnClearPlotFOPO_clicked();
+    
+    // Stokes路图表控制槽函数
+    void on_btnSavePlotStokes_clicked();
+    void on_btnResetViewStokes_clicked();
+    void on_btnClearPlotStokes_clicked();
+    
+    // FOPO路峰值检测槽函数
+    void on_btnShowPeaksFOPO_clicked();  // 显示峰值检测窗口
+    
+    // Stokes路峰值检测槽函数
+    void on_btnShowPeaksStokes_clicked();  // 显示峰值检测窗口
     
     // 位移台控制槽函数
     void on_btnConfirmStageAngle_clicked();     // 设置旋转台角度
@@ -165,13 +179,15 @@ private slots:
     void onSeedLaserStatusChanged(DeviceStatus status);
     void onFOPOLaserStatusChanged(DeviceStatus status);
     void onStokesLaserStatusChanged(DeviceStatus status);
-    void onSpectrometerStatusChanged(DeviceStatus status);
+    void onSpectrometerFOPOStatusChanged(DeviceStatus status);
+    void onSpectrometerStokesStatusChanged(DeviceStatus status);
     void onStageStatusChanged(DeviceStatus status);
     void onGalvoStatusChanged(DeviceStatus status);
     void onDelayStatusChanged(DeviceStatus status);
     
     // 光谱仪数据接收槽函数
-    void onSpectrumDataReady(const QVector<int> &intensity);
+    void onSpectrumDataReady(const QVector<int> &intensity);  // FOPO路
+    void onSpectrumDataReadyStokes(const QVector<int> &intensity);  // Stokes路
     
     // 错误处理槽函数
     void onDeviceError(const QString &error);
@@ -206,7 +222,8 @@ private:
     SerialConfig getSeedLaserSerialConfig();
     SerialConfig getFOPOLaserSerialConfig();
     SerialConfig getStokesLaserSerialConfig();
-    SerialConfig getSpectrometerSerialConfig();
+    SerialConfig getSpectrometerFOPOSerialConfig();
+    SerialConfig getSpectrometerStokesSerialConfig();
     SerialConfig getDelayLineSerialConfig();
     SerialConfig getStageSerialConfig();
     
@@ -220,13 +237,15 @@ private:
     
     // 图表相关函数
     void initSpectrumChart();
-    void updateSpectrum(const QVector<int> &intensity);
-    void showChartMaximized();  // 显示最大化图表窗口
+    void updateSpectrum(const QVector<int> &intensity);  // FOPO路
+    void updateSpectrumStokes(const QVector<int> &intensity);  // Stokes路
+    void showChartMaximized();  // 显示最大化图表窗口（FOPO路）
+    void showChartMaximizedStokes();  // 显示最大化图表窗口（Stokes路）
     
-    // 峰值检测相关函数
-    void detectPeaks();
-    void updatePeaksTable();
-    void exportPeaksToCSV();
+    // 峰值检测相关函数（已废弃，改用弹窗方式）
+    // void detectPeaks();
+    // void updatePeaksTable();
+    // void exportPeaksToCSV();
     double calculateFWHM(int peakIndex, const QVector<int> &data);
     
     // 配置保存/加载辅助函数
@@ -275,11 +294,15 @@ protected:
 private:
     Ui::Integration *ui;
     
+    // 连接管理窗口
+    QWidget *m_connectionManagerWidget;  // 连接管理独立窗口
+    
     // 设备模块
     LaserDriver *m_seedLaserDriver;    // 种子源激光器
     LaserDriver *m_fopoLaserDriver;    // FOPO激光器
     LaserDriver *m_stokesLaserDriver;  // Stokes激光器
-    Spectrometer *m_spectrometer;
+    Spectrometer *m_spectrometerFOPO;    // FOPO路光谱仪
+    Spectrometer *m_spectrometerStokes;  // Stokes路光谱仪
     StageController *m_stageController;
     GalvoMirror *m_galvoMirror;        // 振镜控制卡
     DelayLine *m_delayLine;
@@ -291,18 +314,31 @@ private:
     ImageSaver *m_imageSaver;
     PresetManager *m_presetManager;
     
-    // 光谱仪测量状态
-    bool m_isContinuousMeasuring;
-    bool m_isMeasuring;  // 是否正在测量
-    QTimer *m_measureTimer;
+    // FOPO路光谱仪测量状态
+    bool m_isContinuousMeasuringFOPO;
+    bool m_isMeasuringFOPO;
+    QTimer *m_measureTimerFOPO;
     
-    // 图表相关
-    QChartView *m_chartView;
-    QChart *m_chart;
-    QLineSeries *m_series;
-    QValueAxis *m_axisX;
-    QValueAxis *m_axisY;
-    class QDialog *m_chartMaximizedDialog;  // 图表最大化窗口
+    // Stokes路光谱仪测量状态
+    bool m_isContinuousMeasuringStokes;
+    bool m_isMeasuringStokes;
+    QTimer *m_measureTimerStokes;
+    
+    // FOPO路图表相关
+    QChartView *m_chartViewFOPO;
+    QChart *m_chartFOPO;
+    QLineSeries *m_seriesFOPO;
+    QValueAxis *m_axisXFOPO;
+    QValueAxis *m_axisYFOPO;
+    QDialog *m_chartMaximizedDialogFOPO;
+    
+    // Stokes路图表相关
+    QChartView *m_chartViewStokes;
+    QChart *m_chartStokes;
+    QLineSeries *m_seriesStokes;
+    QValueAxis *m_axisXStokes;
+    QValueAxis *m_axisYStokes;
+    QDialog *m_chartMaximizedDialogStokes;
     
     // 峰值检测相关
     struct PeakData {
@@ -311,8 +347,13 @@ private:
         double fwhm;        // 半高全宽
         int pixelIndex;     // 像素索引
     };
-    QVector<PeakData> m_peaks;
-    QVector<int> m_lastSpectrumData;  // 保存最后一次的光谱数据
+    // FOPO路峰值检测相关
+    QVector<PeakData> m_peaksFOPO;
+    QVector<int> m_lastSpectrumDataFOPO;
+    
+    // Stokes路峰值检测相关
+    QVector<PeakData> m_peaksStokes;
+    QVector<int> m_lastSpectrumDataStokes;
     
     // 预设执行相关 - 功率预设（振镜页）
     class QTableWidget *m_powerPresetTable;      // 功率预设表格

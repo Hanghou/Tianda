@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <ui version="4.0">
  <class>Integration</class>
  <widget class="QMainWindow" name="Integration">
@@ -79,7 +79,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -97,7 +97,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxSeedLaserPort"/>
+                 <widget class="QComboBox" name="comboBoxSeedLaserPort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSeedLaserBaudRate">
@@ -113,7 +113,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxSeedLaserBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxSeedLaserBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerSeedLaser">
@@ -181,7 +181,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -199,7 +199,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxFOPOLaserPort"/>
+                 <widget class="QComboBox" name="comboBoxFOPOLaserPort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelFOPOLaserBaudRate">
@@ -215,7 +215,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxFOPOLaserBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxFOPOLaserBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerFOPOLaser">
@@ -283,7 +283,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -301,7 +301,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxStokesLaserPort"/>
+                 <widget class="QComboBox" name="comboBoxStokesLaserPort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelStokesLaserBaudRate">
@@ -317,7 +317,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxStokesLaserBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxStokesLaserBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerStokesLaser">
@@ -385,7 +385,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -403,7 +403,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxSpectrometerFOPOPort"/>
+                 <widget class="QComboBox" name="comboBoxSpectrometerFOPOPort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSpectrometerFOPOBaudRate">
@@ -419,7 +419,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxSpectrometerFOPOBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxSpectrometerFOPOBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerSpectrometerFOPO">
@@ -487,7 +487,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -505,7 +505,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxSpectrometerStokesPort"/>
+                 <widget class="QComboBox" name="comboBoxSpectrometerStokesPort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelSpectrometerStokesBaudRate">
@@ -521,7 +521,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxSpectrometerStokesBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxSpectrometerStokesBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerSpectrometerStokes">
@@ -589,7 +589,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -607,7 +607,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxStagePort"/>
+                 <widget class="QComboBox" name="comboBoxStagePort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelStageBaudRate">
@@ -623,7 +623,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxStageBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxStageBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerStage">
@@ -691,7 +691,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -775,7 +775,7 @@
                    <string>background-color: gray; border-radius: 15px;</string>
                   </property>
                   <property name="text">
-                   <string/>
+                   <string />
                   </property>
                  </widget>
                 </item>
@@ -793,7 +793,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxDelayPort"/>
+                 <widget class="QComboBox" name="comboBoxDelayPort" />
                 </item>
                 <item>
                  <widget class="QLabel" name="labelDelayBaudRate">
@@ -809,7 +809,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBoxDelayBaudRate"/>
+                 <widget class="QComboBox" name="comboBoxDelayBaudRate" />
                 </item>
                 <item>
                  <spacer name="horizontalSpacerDelay">
@@ -911,11 +911,7 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QLineEdit" name="lineEditGalvoAngle">
-                           <property name="text">
-                            <string>4</string>
-                           </property>
-                          </widget>
+                          <widget class="QLineEdit" name="lineEditGalvoAngle" />
                          </item>
                          <item alignment="Qt::AlignmentFlag::AlignHCenter">
                           <widget class="QLabel" name="labelGalvoAngleUnit">
@@ -973,11 +969,7 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QLineEdit" name="lineEditTimeDelay">
-                           <property name="text">
-                            <string>400</string>
-                           </property>
-                          </widget>
+                          <widget class="QLineEdit" name="lineEditTimeDelay" />
                          </item>
                          <item alignment="Qt::AlignmentFlag::AlignHCenter">
                           <widget class="QLabel" name="labelTimeDelayUnit">
@@ -1037,11 +1029,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditSeedPump">
-                         <property name="text">
-                          <string>80</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditSeedPump" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelSeedPumpUnit">
@@ -1093,11 +1081,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditFOPOPump">
-                         <property name="text">
-                          <string>8</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditFOPOPump" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelFOPOPumpUnit">
@@ -1149,11 +1133,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStokesPump">
-                         <property name="text">
-                          <string>400</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStokesPump" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStokesPumpUnit">
@@ -1744,20 +1724,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStageAngle">
-                         <property name="toolTip">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                         </property>
-                         <property name="whatsThis">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                         </property>
-                         <property name="layoutDirection">
-                          <enum>Qt::LayoutDirection::LeftToRight</enum>
-                         </property>
-                         <property name="text">
-                          <string>0.4</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStageAngle" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageAngleUnit">
@@ -1815,11 +1782,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStagePosition">
-                         <property name="text">
-                          <string>6</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStagePosition" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStagePositionUnit">
@@ -1913,11 +1876,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStageSeedPump">
-                         <property name="text">
-                          <string>80</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStageSeedPump" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageSeedPumpUnit">
@@ -1969,11 +1928,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStageFOPOPump">
-                         <property name="text">
-                          <string>8</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStageFOPOPump" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageFOPOPumpUnit">
@@ -2025,11 +1980,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStageStokesPump">
-                         <property name="text">
-                          <string>400</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStageStokesPump" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageStokesPumpUnit">
@@ -2093,11 +2044,7 @@
                         </widget>
                        </item>
                        <item>
-                        <widget class="QLineEdit" name="lineEditStageTimeDelay">
-                         <property name="text">
-                          <string>400</string>
-                         </property>
-                        </widget>
+                        <widget class="QLineEdit" name="lineEditStageTimeDelay" />
                        </item>
                        <item alignment="Qt::AlignmentFlag::AlignHCenter">
                         <widget class="QLabel" name="labelStageTimeDelayUnit">
@@ -2606,221 +2553,189 @@
              </item>
             </layout>
            </widget>
-          </widget>
+           </widget>
          </item>
         </layout>
        </widget>
       </item>
-      <item>
-       <widget class="QFrame" name="frameRightPanel">
-        <property name="minimumSize">
-         <size>
-          <width>600</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="frameShape">
-         <enum>QFrame::Shape::StyledPanel</enum>
-        </property>
-        <property name="frameShadow">
-         <enum>QFrame::Shadow::Raised</enum>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout_rightPanel">
-         <item>
-          <widget class="QLabel" name="labelSpectrumTitle">
-           <property name="styleSheet">
-            <string>font-size: 14pt; font-weight: bold; padding: 5px;</string>
+     <item><widget class="QFrame" name="frameRightPanel"><property name="frameShape"><enum>QFrame::Shape::StyledPanel</enum></property><property name="frameShadow"><enum>QFrame::Shadow::Raised</enum></property><property name="minimumSize"><size><width>600</width><height>0</height></size></property><layout class="QVBoxLayout" name="verticalLayout_rightPanel"><item><widget class="QLabel" name="labelSpectrumTitle"><property name="text"><string>光谱测量显示</string></property><property name="styleSheet"><string>font-size: 14pt; font-weight: bold; padding: 5px;</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item>     <item>
+      <widget class="QGroupBox" name="groupBoxFOPOSpectrum">
+       <property name="title">
+        <string>FOPO路光谱仪</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_FOPOSpectrum">
+        <item>
+         <widget class="QWidget" name="chartWidgetFOPO" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>300</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_chartFOPO">
+           <property name="spacing">
+            <number>0</number>
            </property>
-           <property name="text">
-            <string>光谱测量显示</string>
+           <property name="leftMargin">
+            <number>0</number>
            </property>
-           <property name="alignment">
-            <set>Qt::AlignmentFlag::AlignCenter</set>
+           <property name="topMargin">
+            <number>0</number>
            </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QGroupBox" name="groupBoxFOPOSpectrum">
-           <property name="title">
-            <string>FOPO路光谱仪</string>
+           <property name="rightMargin">
+            <number>0</number>
            </property>
-           <layout class="QVBoxLayout" name="verticalLayout_FOPOSpectrum">
-            <item>
-             <widget class="QWidget" name="chartWidgetFOPO" native="true">
-              <property name="minimumSize">
-               <size>
-                <width>0</width>
-                <height>300</height>
-               </size>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_chartFOPO">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_FOPOControls">
-              <item>
-               <widget class="QPushButton" name="btnSingleMeasureFOPO">
-                <property name="text">
-                 <string>单次测量</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnContinuousMeasureFOPO">
-                <property name="text">
-                 <string>持续测量</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnStopMeasureFOPO">
-                <property name="text">
-                 <string>停止测量</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnSavePlotFOPO">
-                <property name="text">
-                 <string>保存数据</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnResetViewFOPO">
-                <property name="text">
-                 <string>重置视图</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnClearPlotFOPO">
-                <property name="text">
-                 <string>清除数据</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnShowPeaksFOPO">
-                <property name="text">
-                 <string>峰值检测</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item>
-          <widget class="QGroupBox" name="groupBoxStokesSpectrum">
-           <property name="title">
-            <string>Stokes路光谱仪</string>
+           <property name="bottomMargin">
+            <number>0</number>
            </property>
-           <layout class="QVBoxLayout" name="verticalLayout_StokesSpectrum">
-            <item>
-             <widget class="QWidget" name="chartWidgetStokes" native="true">
-              <property name="minimumSize">
-               <size>
-                <width>0</width>
-                <height>300</height>
-               </size>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_chartStokes">
-               <property name="spacing">
-                <number>0</number>
-               </property>
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-              </layout>
-             </widget>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_StokesControls">
-              <item>
-               <widget class="QPushButton" name="btnSingleMeasureStokes">
-                <property name="text">
-                 <string>单次测量</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnContinuousMeasureStokes">
-                <property name="text">
-                 <string>持续测量</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnStopMeasureStokes">
-                <property name="text">
-                 <string>停止测量</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnSavePlotStokes">
-                <property name="text">
-                 <string>保存数据</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnResetViewStokes">
-                <property name="text">
-                 <string>重置视图</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnClearPlotStokes">
-                <property name="text">
-                 <string>清除数据</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="btnShowPeaksStokes">
-                <property name="text">
-                 <string>峰值检测</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-           </layout>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
-     </layout>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_FOPOControls">
+          <item>
+           <widget class="QPushButton" name="btnSingleMeasureFOPO">
+            <property name="text">
+             <string>单次测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnContinuousMeasureFOPO">
+            <property name="text">
+             <string>持续测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnStopMeasureFOPO">
+            <property name="text">
+             <string>停止测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnSavePlotFOPO">
+            <property name="text">
+             <string>保存数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnResetViewFOPO">
+            <property name="text">
+             <string>重置视图</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClearPlotFOPO">
+            <property name="text">
+             <string>清除数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnShowPeaksFOPO">
+            <property name="text">
+             <string>峰值检测</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBoxStokesSpectrum">
+       <property name="title">
+        <string>Stokes路光谱仪</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_StokesSpectrum">
+        <item>
+         <widget class="QWidget" name="chartWidgetStokes" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>300</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_chartStokes">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_StokesControls">
+          <item>
+           <widget class="QPushButton" name="btnSingleMeasureStokes">
+            <property name="text">
+             <string>单次测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnContinuousMeasureStokes">
+            <property name="text">
+             <string>持续测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnStopMeasureStokes">
+            <property name="text">
+             <string>停止测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnSavePlotStokes">
+            <property name="text">
+             <string>保存数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnResetViewStokes">
+            <property name="text">
+             <string>重置视图</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClearPlotStokes">
+            <property name="text">
+             <string>清除数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnShowPeaksStokes">
+            <property name="text">
+             <string>峰值检测</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item></layout></widget></item></layout>
     </item>
    </layout>
   </widget>
@@ -2834,8 +2749,8 @@
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
  </widget>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

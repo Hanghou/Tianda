@@ -4,10 +4,10 @@ CONFIG += c++11
 
 # MSVC 编译器配置
 msvc {
+    # 使用 UTF-8 编码
+    QMAKE_CXXFLAGS += /utf-8
     # 禁用 Windows min/max 宏
     DEFINES += NOMINMAX
-    # 禁用 digraphs 警告（C4628）
-    QMAKE_CXXFLAGS += /wd4628
     # 禁用其他常见警告
     QMAKE_CXXFLAGS += /wd4100  # 未引用的形参
     QMAKE_CXXFLAGS += /wd4244  # 类型转换可能丢失数据

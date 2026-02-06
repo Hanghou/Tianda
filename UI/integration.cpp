@@ -28,15 +28,20 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
 #include <QtCharts/QChartView>
 
 Integration::Integration(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Integration)
+    , m_connectionManagerWidget(nullptr)
     , m_seedLaserDriver(nullptr)
     , m_fopoLaserDriver(nullptr)
     , m_stokesLaserDriver(nullptr)
-    , m_spectrometer(nullptr)
+    , m_spectrometerFOPO(nullptr)
+    , m_spectrometerStokes(nullptr)
     , m_stageController(nullptr)
     , m_galvoMirror(nullptr)
     , m_delayLine(nullptr)
@@ -45,15 +50,24 @@ Integration::Integration(QWidget *parent)
     , m_csvExporter(nullptr)
     , m_imageSaver(nullptr)
     , m_presetManager(nullptr)
-    , m_isContinuousMeasuring(false)
-    , m_isMeasuring(false)
-    , m_measureTimer(nullptr)
-    , m_chartView(nullptr)
-    , m_chart(nullptr)
-    , m_series(nullptr)
-    , m_axisX(nullptr)
-    , m_axisY(nullptr)
-    , m_chartMaximizedDialog(nullptr)
+    , m_isContinuousMeasuringFOPO(false)
+    , m_isMeasuringFOPO(false)
+    , m_measureTimerFOPO(nullptr)
+    , m_isContinuousMeasuringStokes(false)
+    , m_isMeasuringStokes(false)
+    , m_measureTimerStokes(nullptr)
+    , m_chartViewFOPO(nullptr)
+    , m_chartFOPO(nullptr)
+    , m_seriesFOPO(nullptr)
+    , m_axisXFOPO(nullptr)
+    , m_axisYFOPO(nullptr)
+    , m_chartMaximizedDialogFOPO(nullptr)
+    , m_chartViewStokes(nullptr)
+    , m_chartStokes(nullptr)
+    , m_seriesStokes(nullptr)
+    , m_axisXStokes(nullptr)
+    , m_axisYStokes(nullptr)
+    , m_chartMaximizedDialogStokes(nullptr)
     , m_powerPresetTable(nullptr)
     , m_powerPresetDelayTimer(nullptr)
     , m_currentPowerPresetIndex(0)
@@ -77,11 +91,9 @@ Integration::Integration(QWidget *parent)
 {
     ui->setupUi(this);
     
-    // 窗口启动时自动最大化
-    showMaximized();
-    
     // 初始化测量定时器
-    m_measureTimer = new QTimer(this);
+    m_measureTimerFOPO = new QTimer(this);
+    m_measureTimerStokes = new QTimer(this);
     
     // 初始化预设定时器
     m_powerPresetDelayTimer = new QTimer(this);
@@ -96,15 +108,27 @@ Integration::Integration(QWidget *parent)
     loadConfiguration();
     
     updateStatusBar("程序已启动");
+    
+    // 窗口启动时自动最大化（使用延迟确保在事件循环开始后执行）
+    QTimer::singleShot(0, this, [this]() {
+        showMaximized();
+    });
 }
 
 Integration::~Integration()
 {
+    // 清理连接管理窗口
+    if (m_connectionManagerWidget) {
+        delete m_connectionManagerWidget;
+        m_connectionManagerWidget = nullptr;
+    }
+    
     // 清理设备
     delete m_seedLaserDriver;
     delete m_fopoLaserDriver;
     delete m_stokesLaserDriver;
-    delete m_spectrometer;
+    delete m_spectrometerFOPO;
+    delete m_spectrometerStokes;
     delete m_stageController;
     delete m_galvoMirror;
     delete m_delayLine;
@@ -128,8 +152,9 @@ void Integration::initDevices()
     m_fopoLaserDriver = new LaserDriver(LaserType::FOPO, this);
     m_stokesLaserDriver = new LaserDriver(LaserType::Stokes, this);
     
-    // 创建光谱仪实例（单个）
-    m_spectrometer = new Spectrometer(this);
+    // 创建光谱仪实例（两个独立的光谱仪）
+    m_spectrometerFOPO = new Spectrometer(this);
+    m_spectrometerStokes = new Spectrometer(this);
     
     // 创建其他设备实例
     m_stageController = new StageController(this);
@@ -194,8 +219,67 @@ void Integration::initUI()
     // 初始化所有状态指示器的大小和样式（统一为20x20的圆形指示灯）
     initStatusIndicators();
     
+    // 设置所有输入框居中对齐
+    // 振镜页输入框
+    ui->lineEditGalvoAngle->setAlignment(Qt::AlignCenter);
+    ui->lineEditTimeDelay->setAlignment(Qt::AlignCenter);
+    ui->lineEditSeedPump->setAlignment(Qt::AlignCenter);
+    ui->lineEditFOPOPump->setAlignment(Qt::AlignCenter);
+    ui->lineEditStokesPump->setAlignment(Qt::AlignCenter);
+    
+    // 位移台页输入框
+    ui->lineEditStageAngle->setAlignment(Qt::AlignCenter);
+    ui->lineEditStagePosition->setAlignment(Qt::AlignCenter);
+    ui->lineEditStageTimeDelay->setAlignment(Qt::AlignCenter);
+    ui->lineEditStageSeedPump->setAlignment(Qt::AlignCenter);
+    ui->lineEditStageFOPOPump->setAlignment(Qt::AlignCenter);
+    ui->lineEditStageStokesPump->setAlignment(Qt::AlignCenter);
+    
     // 更新连接状态
     updateConnectionStatus();
+    
+    // ========== 连接管理配置 ==========
+    // 创建独立的连接管理窗口
+    m_connectionManagerWidget = new QWidget(nullptr, Qt::Window);
+    m_connectionManagerWidget->setWindowTitle("设备连接管理");
+    m_connectionManagerWidget->resize(700, 800);
+    m_connectionManagerWidget->setAttribute(Qt::WA_DeleteOnClose, false);  // 关闭时不删除
+    
+    // 获取连接页widget(索引0)
+    QWidget *connectionTab = ui->tabWidget->widget(0);
+    if (connectionTab) {
+        // 将连接页从TabWidget中移除
+        ui->tabWidget->removeTab(0);
+        
+        // 将连接页设置为独立窗口的内容
+        QVBoxLayout *layout = new QVBoxLayout(m_connectionManagerWidget);
+        layout->setContentsMargins(10, 10, 10, 10);
+        connectionTab->setParent(m_connectionManagerWidget);
+        connectionTab->show();  // 确保子widget可见
+        layout->addWidget(connectionTab);
+        m_connectionManagerWidget->setLayout(layout);
+    }
+    
+    // 创建菜单栏
+    QMenuBar *menuBar = new QMenuBar(this);
+    setMenuBar(menuBar);
+    
+    // 创建连接管理菜单
+    QMenu *connectionMenu = menuBar->addMenu("连接管理");
+    QAction *openConnectionAction = connectionMenu->addAction("打开连接管理窗口");
+    
+    // 使用lambda直接连接信号槽
+    connect(openConnectionAction, &QAction::triggered, this, [this]() {
+        if (m_connectionManagerWidget) {
+            if (m_connectionManagerWidget->isVisible()) {
+                m_connectionManagerWidget->hide();
+            } else {
+                m_connectionManagerWidget->show();
+                m_connectionManagerWidget->raise();
+                m_connectionManagerWidget->activateWindow();
+            }
+        }
+    });
 }
 
 void Integration::initConnections()
@@ -218,13 +302,21 @@ void Integration::initConnections()
     connect(m_stokesLaserDriver, &LaserDriver::errorOccurred,
             this, &Integration::onDeviceError);
     
-    // 连接光谱仪信号
-    connect(m_spectrometer, &Spectrometer::statusChanged,
-            this, &Integration::onSpectrometerStatusChanged);
-    connect(m_spectrometer, &Spectrometer::errorOccurred,
+    // 连接光谱仪信号 - FOPO路
+    connect(m_spectrometerFOPO, &Spectrometer::statusChanged,
+            this, &Integration::onSpectrometerFOPOStatusChanged);
+    connect(m_spectrometerFOPO, &Spectrometer::errorOccurred,
             this, &Integration::onDeviceError);
-    connect(m_spectrometer, &Spectrometer::spectrumDataReady,
+    connect(m_spectrometerFOPO, &Spectrometer::spectrumDataReady,
             this, &Integration::onSpectrumDataReady);
+    
+    // 连接光谱仪信号 - Stokes路
+    connect(m_spectrometerStokes, &Spectrometer::statusChanged,
+            this, &Integration::onSpectrometerStokesStatusChanged);
+    connect(m_spectrometerStokes, &Spectrometer::errorOccurred,
+            this, &Integration::onDeviceError);
+    connect(m_spectrometerStokes, &Spectrometer::spectrumDataReady,
+            this, &Integration::onSpectrumDataReadyStokes);
     
     // 连接位移台信号
     connect(m_stageController, &StageController::statusChanged,
@@ -251,8 +343,10 @@ void Integration::initConnections()
             this, &Integration::onDelayChanged);
     
     // 连接测量定时器
-    connect(m_measureTimer, &QTimer::timeout,
-            this, &Integration::onMeasureTimeout);
+    connect(m_measureTimerFOPO, &QTimer::timeout,
+            this, &Integration::onMeasureTimeoutFOPO);
+    connect(m_measureTimerStokes, &QTimer::timeout,
+            this, &Integration::onMeasureTimeoutStokes);
     
     // 连接预设定时器
     connect(m_powerPresetDelayTimer, &QTimer::timeout,
@@ -285,10 +379,16 @@ void Integration::closeEvent(QCloseEvent *event)
 
 bool Integration::eventFilter(QObject *obj, QEvent *event)
 {
-    // 检测图表视图的双击事件
-    if (obj == m_chartView && event->type() == QEvent::MouseButtonDblClick) {
+    // 检测FOPO路图表视图的双击事件
+    if (obj == m_chartViewFOPO && event->type() == QEvent::MouseButtonDblClick) {
         showChartMaximized();
-        return true;  // 事件已处理
+        return true;
+    }
+    
+    // 检测Stokes路图表视图的双击事件
+    if (obj == m_chartViewStokes && event->type() == QEvent::MouseButtonDblClick) {
+        showChartMaximizedStokes();
+        return true;
     }
     
     // 传递给基类处理其他事件
@@ -304,7 +404,8 @@ void Integration::initSerialPortCombos()
     populateSerialPortCombo(ui->comboBoxSeedLaserPort);
     populateSerialPortCombo(ui->comboBoxFOPOLaserPort);
     populateSerialPortCombo(ui->comboBoxStokesLaserPort);
-    populateSerialPortCombo(ui->comboBoxSpectrometerPort);
+    populateSerialPortCombo(ui->comboBoxSpectrometerFOPOPort);
+    populateSerialPortCombo(ui->comboBoxSpectrometerStokesPort);
     populateSerialPortCombo(ui->comboBoxStagePort);
     populateSerialPortCombo(ui->comboBoxDelayPort);
     
@@ -312,7 +413,8 @@ void Integration::initSerialPortCombos()
     populateBaudRateCombo(ui->comboBoxSeedLaserBaudRate);
     populateBaudRateCombo(ui->comboBoxFOPOLaserBaudRate);
     populateBaudRateCombo(ui->comboBoxStokesLaserBaudRate);
-    populateBaudRateCombo(ui->comboBoxSpectrometerBaudRate);
+    populateBaudRateCombo(ui->comboBoxSpectrometerFOPOBaudRate);
+    populateBaudRateCombo(ui->comboBoxSpectrometerStokesBaudRate);  // 添加 Stokes 光谱仪波特率
     populateBaudRateCombo(ui->comboBoxStageBaudRate);
     populateBaudRateCombo(ui->comboBoxDelayBaudRate);
     
@@ -320,7 +422,8 @@ void Integration::initSerialPortCombos()
     ui->comboBoxSeedLaserBaudRate->setCurrentText("9600");
     ui->comboBoxFOPOLaserBaudRate->setCurrentText("9600");
     ui->comboBoxStokesLaserBaudRate->setCurrentText("9600");
-    ui->comboBoxSpectrometerBaudRate->setCurrentText("115200");
+    ui->comboBoxSpectrometerFOPOBaudRate->setCurrentText("115200");
+    ui->comboBoxSpectrometerStokesBaudRate->setCurrentText("115200");  // 设置 Stokes 光谱仪默认波特率
     ui->comboBoxStageBaudRate->setCurrentText("9600");
     ui->comboBoxDelayBaudRate->setCurrentText("9600");
 }
@@ -406,7 +509,8 @@ void Integration::initStatusIndicators()
     updateStatusIndicator(ui->labelSeedLaserStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelFOPOLaserStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelStokesLaserStatus, DeviceStatus::Disconnected);
-    updateStatusIndicator(ui->labelSpectrometerStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelSpectrometerFOPOStatus, DeviceStatus::Disconnected);
+    updateStatusIndicator(ui->labelSpectrometerStokesStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelStageStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Disconnected);
@@ -455,6 +559,7 @@ void Integration::updateStatusIndicator(QLabel *indicator, DeviceStatus status)
             break;
     }
 }
+
 
 // ========== 激光器连接/断开槽函数 ==========
 
@@ -601,9 +706,9 @@ void Integration::disconnectLaser(LaserDeviceType type)
 
 // ========== 光谱仪连接/断开槽函数 ==========
 
-void Integration::on_btnConnectSpectrometer_clicked()
+void Integration::on_btnConnectSpectrometerFOPO_clicked()
 {
-    SerialConfig config = getSpectrometerSerialConfig();
+    SerialConfig config = getSpectrometerFOPOSerialConfig();
     
     // 检查是否选择了串口
     if (config.portName.isEmpty()) {
@@ -613,7 +718,7 @@ void Integration::on_btnConnectSpectrometer_clicked()
     }
     
     // 显示连接中状态
-    updateStatusIndicator(ui->labelSpectrometerStatus, DeviceStatus::Connecting);
+    updateStatusIndicator(ui->labelSpectrometerFOPOStatus, DeviceStatus::Connecting);
     updateStatusBar("光谱仪正在连接...");
     
     // 处理 UI 事件
@@ -622,35 +727,35 @@ void Integration::on_btnConnectSpectrometer_clicked()
     // 使用 QTimer 异步执行连接操作
     QTimer::singleShot(50, this, [this, config]() {
         // 设置串口参数
-        m_spectrometer->setPortName(config.portName);
-        m_spectrometer->setBaudRate(config.baudRate);
-        m_spectrometer->setDataBits(static_cast<int>(config.dataBits));
-        m_spectrometer->setStopBits(static_cast<int>(config.stopBits));
-        m_spectrometer->setParity(static_cast<int>(config.parity));
+        m_spectrometerFOPO->setPortName(config.portName);
+        m_spectrometerFOPO->setBaudRate(config.baudRate);
+        m_spectrometerFOPO->setDataBits(static_cast<int>(config.dataBits));
+        m_spectrometerFOPO->setStopBits(static_cast<int>(config.stopBits));
+        m_spectrometerFOPO->setParity(static_cast<int>(config.parity));
         
         // 处理 UI 事件
         QCoreApplication::processEvents();
         
-        if (m_spectrometer->connect()) {
+        if (m_spectrometerFOPO->connect()) {
             updateStatusBar("光谱仪连接成功");
-            updateStatusIndicator(ui->labelSpectrometerStatus, DeviceStatus::Connected);
+            updateStatusIndicator(ui->labelSpectrometerFOPOStatus, DeviceStatus::Connected);
             
             QString info = QString("像素数: %1, 序列号: %2")
-                           .arg(m_spectrometer->getPixelLength())
-                           .arg(m_spectrometer->getSerialNumber());
+                           .arg(m_spectrometerFOPO->getPixelLength())
+                           .arg(m_spectrometerFOPO->getSerialNumber());
             qDebug() << "光谱仪信息:" << info;
         } else {
             updateStatusBar("光谱仪连接失败");
-            updateStatusIndicator(ui->labelSpectrometerStatus, DeviceStatus::Error);
-            QMessageBox::warning(this, "连接失败", m_spectrometer->getLastError());
+            updateStatusIndicator(ui->labelSpectrometerFOPOStatus, DeviceStatus::Error);
+            QMessageBox::warning(this, "连接失败", m_spectrometerFOPO->getLastError());
         }
     });
 }
 
-void Integration::on_btnDisconnectSpectrometer_clicked()
+void Integration::on_btnDisconnectSpectrometerFOPO_clicked()
 {
-    m_spectrometer->disconnect();
-    updateStatusIndicator(ui->labelSpectrometerStatus, DeviceStatus::Disconnected);
+    m_spectrometerFOPO->disconnect();
+    updateStatusIndicator(ui->labelSpectrometerFOPOStatus, DeviceStatus::Disconnected);
     updateStatusBar("光谱仪已断开");
 }
 
@@ -825,9 +930,9 @@ void Integration::on_btnDisconnectDelay_clicked()
 
 // ========== 光谱测量控制槽函数 ==========
 
-void Integration::on_btnSingleMeasure_clicked()
+void Integration::on_btnSingleMeasureFOPO_clicked()
 {
-    if (!m_spectrometer->isConnected()) {
+    if (!m_spectrometerFOPO->isConnected()) {
         QMessageBox::warning(this, "错误", "请先连接光谱仪");
         return;
     }
@@ -835,15 +940,15 @@ void Integration::on_btnSingleMeasure_clicked()
     startMeasurement();
 }
 
-void Integration::on_btnContinuousMeasure_clicked()
+void Integration::on_btnContinuousMeasureFOPO_clicked()
 {
-    if (!m_spectrometer->isConnected()) {
+    if (!m_spectrometerFOPO->isConnected()) {
         QMessageBox::warning(this, "错误", "请先连接光谱仪");
         return;
     }
     
     // 获取积分时间并检查有效性
-    int integrationTime = m_spectrometer->getIntegrationTime();
+    int integrationTime = m_spectrometerFOPO->getIntegrationTime();
     if (integrationTime <= 0) {
         QMessageBox::warning(this, "错误", "无法获取积分时间，请检查光谱仪连接");
         qDebug() << "获取积分时间失败，返回值:" << integrationTime;
@@ -860,9 +965,9 @@ void Integration::on_btnContinuousMeasure_clicked()
         qDebug() << "测量间隔过短，调整为最小值: 100ms";
     }
     
-    m_measureTimer->start(intervalMs);
-    m_isContinuousMeasuring = true;
-    m_isMeasuring = true;
+    m_measureTimerFOPO->start(intervalMs);
+    m_isContinuousMeasuringFOPO = true;
+    m_isMeasuringFOPO = true;
     
     // 立即执行一次测量
     startMeasurement();
@@ -871,12 +976,12 @@ void Integration::on_btnContinuousMeasure_clicked()
     qDebug() << "开始持续测量，间隔:" << intervalMs << "ms";
 }
 
-void Integration::on_btnStopMeasure_clicked()
+void Integration::on_btnStopMeasureFOPO_clicked()
 {
     // 停止连续测量定时器
-    if (m_isContinuousMeasuring) {
-        m_measureTimer->stop();
-        m_isContinuousMeasuring = false;
+    if (m_isContinuousMeasuringFOPO) {
+        m_measureTimerFOPO->stop();
+        m_isContinuousMeasuringFOPO = false;
         updateStatusBar("持续测量已停止");
         qDebug() << "持续测量已停止";
     }
@@ -884,212 +989,315 @@ void Integration::on_btnStopMeasure_clicked()
     stopMeasurement();
 }
 
-void Integration::on_btnSavePlot_clicked()
+void Integration::on_btnSavePlotFOPO_clicked()
 {
     saveSpectrum();
 }
 
-void Integration::on_btnResetView_clicked()
+void Integration::on_btnResetViewFOPO_clicked()
 {
-    if (!m_chart) {
+    if (!m_chartFOPO) {
         QMessageBox::warning(this, "错误", "图表未初始化");
         return;
     }
     
     // 重置坐标轴范围
-    if (m_axisX) {
-        m_axisX->setRange(200, 1100);  // 波长范围 200-1100 nm
+    if (m_axisXFOPO) {
+        m_axisXFOPO->setRange(200, 1100);  // 波长范围 200-1100 nm
     }
-    if (m_axisY) {
-        m_axisY->setRange(0, 65535);  // 强度范围
+    if (m_axisYFOPO) {
+        m_axisYFOPO->setRange(0, 65535);  // 强度范围
     }
     
     // 重置缩放
-    m_chart->zoomReset();
+    m_chartFOPO->zoomReset();
     
     updateStatusBar("视图已重置");
     qDebug() << "视图已重置";
 }
 
-void Integration::on_btnClearPlot_clicked()
+void Integration::on_btnClearPlotFOPO_clicked()
 {
-    if (!m_series) {
+    if (!m_seriesFOPO) {
         QMessageBox::warning(this, "错误", "数据系列未初始化");
         return;
     }
     
     // 清除数据
-    m_series->clear();
-    m_lastSpectrumData.clear();
+    m_seriesFOPO->clear();
+    m_lastSpectrumDataFOPO.clear();
     
     updateStatusBar("光谱数据已清除");
     qDebug() << "光谱数据已清除";
 }
 
-// ========== 峰值检测槽函数 ==========
+// ========== 峰值检测弹窗函数 ==========
 
-void Integration::on_btnDetectPeaks_clicked()
+void Integration::on_btnShowPeaksFOPO_clicked()
 {
-    if (m_lastSpectrumData.isEmpty()) {
-        QMessageBox::warning(this, "错误", "没有可用的光谱数据，请先进行测量");
-        return;
-    }
+    // 创建峰值检测对话框
+    QDialog *peakDialog = new QDialog(this);
+    peakDialog->setWindowTitle("FOPO路峰值检测");
+    peakDialog->resize(600, 400);
     
-    detectPeaks();
-    updatePeaksTable();
+    // 创建布局
+    QVBoxLayout *mainLayout = new QVBoxLayout(peakDialog);
     
-    updateStatusBar(QString("检测到 %1 个峰值").arg(m_peaks.size()));
-    qDebug() << "峰值检测完成，共检测到" << m_peaks.size() << "个峰值";
-}
-
-void Integration::on_btnExportPeaks_clicked()
-{
-    if (m_peaks.isEmpty()) {
-        QMessageBox::warning(this, "错误", "没有峰值数据可导出，请先检测峰值");
-        return;
-    }
+    // 创建按钮行
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
     
-    exportPeaksToCSV();
-}
-
-void Integration::on_btnClearPeaks_clicked()
-{
-    m_peaks.clear();
-    ui->tableWidgetPeaks->setRowCount(0);
+    QPushButton *btnDetect = new QPushButton("检测峰值", peakDialog);
+    QPushButton *btnExport = new QPushButton("导出峰值", peakDialog);
+    QPushButton *btnClear = new QPushButton("清除峰值", peakDialog);
     
-    updateStatusBar("峰值数据已清除");
-    qDebug() << "峰值数据已清除";
-}
-
-// ========== 峰值检测辅助函数 ==========
-
-void Integration::detectPeaks()
-{
-    m_peaks.clear();
+    buttonLayout->addWidget(btnDetect);
+    buttonLayout->addWidget(btnExport);
+    buttonLayout->addWidget(btnClear);
+    buttonLayout->addStretch();
     
-    if (m_lastSpectrumData.isEmpty()) {
-        return;
-    }
+    mainLayout->addLayout(buttonLayout);
     
-    // 获取检测参数
-    int intensityThreshold = ui->spinBoxIntensityThreshold->value();
-    int peakWidth = ui->spinBoxPeakWidth->value();
+    // 创建峰值表格
+    QTableWidget *peakTable = new QTableWidget(peakDialog);
+    peakTable->setColumnCount(3);
+    peakTable->setHorizontalHeaderLabels({"序号", "像素索引", "强度"});
+    peakTable->horizontalHeader()->setStretchLastSection(true);
     
-    int totalPixels = m_lastSpectrumData.size();
+    mainLayout->addWidget(peakTable);
     
-    // 峰值检测算法：寻找局部最大值
-    for (int i = peakWidth; i < totalPixels - peakWidth; ++i) {
-        int currentIntensity = m_lastSpectrumData[i];
-        
-        // 检查是否超过阈值
-        if (currentIntensity < intensityThreshold) {
-            continue;
+    // 连接按钮信号
+    connect(btnDetect, &QPushButton::clicked, [this, peakTable]() {
+        if (m_lastSpectrumDataFOPO.isEmpty()) {
+            QMessageBox::warning(this, "错误", "没有可用的光谱数据，请先进行测量");
+            return;
         }
         
-        // 检查是否为局部最大值
-        bool isPeak = true;
-        for (int j = i - peakWidth; j <= i + peakWidth; ++j) {
-            if (j != i && m_lastSpectrumData[j] >= currentIntensity) {
-                isPeak = false;
-                break;
+        // 执行峰值检测（内联实现）
+        m_peaksFOPO.clear();
+        
+        int intensityThreshold = 1000;  // 强度阈值
+        int peakWidth = 5;  // 峰宽度
+        int totalPixels = m_lastSpectrumDataFOPO.size();
+        
+        // 峰值检测算法：寻找局部最大值
+        for (int i = peakWidth; i < totalPixels - peakWidth; ++i) {
+            int currentIntensity = m_lastSpectrumDataFOPO[i];
+            
+            if (currentIntensity < intensityThreshold) {
+                continue;
+            }
+            
+            bool isPeak = true;
+            for (int j = i - peakWidth; j <= i + peakWidth; ++j) {
+                if (j != i && m_lastSpectrumDataFOPO[j] >= currentIntensity) {
+                    isPeak = false;
+                    break;
+                }
+            }
+            
+            if (isPeak) {
+                PeakData peak;
+                peak.pixelIndex = i;
+                peak.wavelength = 200.0 + (900.0 * i / (totalPixels - 1));
+                peak.intensity = currentIntensity;
+                peak.fwhm = calculateFWHM(i, m_lastSpectrumDataFOPO);
+                m_peaksFOPO.append(peak);
+                i += peakWidth;
             }
         }
         
-        if (isPeak) {
-            PeakData peak;
-            peak.pixelIndex = i;
-            // 将像素索引转换为波长（200-1100 nm）
-            peak.wavelength = 200.0 + (900.0 * i / (totalPixels - 1));
-            peak.intensity = currentIntensity;
-            peak.fwhm = calculateFWHM(i, m_lastSpectrumData);
-            
-            m_peaks.append(peak);
-            
-            // 跳过峰值附近的点，避免重复检测
-            i += peakWidth;
+        // 更新表格
+        peakTable->setRowCount(m_peaksFOPO.size());
+        for (int i = 0; i < m_peaksFOPO.size(); i++) {
+            peakTable->setItem(i, 0, new QTableWidgetItem(QString::number(i + 1)));
+            peakTable->setItem(i, 1, new QTableWidgetItem(QString::number(m_peaksFOPO[i].pixelIndex)));
+            peakTable->setItem(i, 2, new QTableWidgetItem(QString::number(m_peaksFOPO[i].intensity)));
         }
-    }
+        
+        updateStatusBar(QString("检测到 %1 个峰值").arg(m_peaksFOPO.size()));
+        qDebug() << "FOPO路峰值检测完成，共检测到" << m_peaksFOPO.size() << "个峰值";
+    });
     
-    qDebug() << "峰值检测完成，检测到" << m_peaks.size() << "个峰值";
+    connect(btnExport, &QPushButton::clicked, [this]() {
+        if (m_peaksFOPO.isEmpty()) {
+            QMessageBox::warning(this, "错误", "没有峰值数据可导出，请先检测峰值");
+            return;
+        }
+        
+        // 导出峰值数据（内联实现）
+        QString fileName = QFileDialog::getSaveFileName(
+            this,
+            "导出FOPO路峰值数据",
+            QCoreApplication::applicationDirPath() + "/peaks_fopo.csv",
+            "CSV文件 (*.csv);;所有文件 (*)"
+        );
+        
+        if (fileName.isEmpty()) {
+            return;
+        }
+        
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::warning(this, "错误", "无法创建文件：" + fileName);
+            return;
+        }
+        
+        QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
+        out << "\xEF\xBB\xBF";  // UTF-8 BOM
+        out << "序号,像素索引,波长[nm],强度[counts],FWHM[nm]\n";
+        
+        for (int i = 0; i < m_peaksFOPO.size(); i++) {
+            const PeakData &peak = m_peaksFOPO[i];
+            out << (i + 1) << ","
+                << peak.pixelIndex << ","
+                << QString::number(peak.wavelength, 'f', 2) << ","
+                << peak.intensity << ","
+                << QString::number(peak.fwhm, 'f', 2) << "\n";
+        }
+        
+        file.close();
+        
+        updateStatusBar("FOPO路峰值数据已导出: " + fileName);
+        QMessageBox::information(this, "导出成功", 
+            QString("峰值数据已导出到:\n%1\n\n共导出 %2 个峰值")
+            .arg(fileName).arg(m_peaksFOPO.size()));
+    });
+    
+    connect(btnClear, &QPushButton::clicked, [this, peakTable]() {
+        m_peaksFOPO.clear();
+        peakTable->setRowCount(0);
+        updateStatusBar("FOPO路峰值数据已清除");
+        qDebug() << "FOPO路峰值数据已清除";
+    });
+    
+    // 显示对话框
+    peakDialog->exec();
+    peakDialog->deleteLater();
 }
 
-void Integration::updatePeaksTable()
+void Integration::on_btnShowPeaksStokes_clicked()
 {
-    ui->tableWidgetPeaks->setRowCount(0);
+    // 创建峰值检测对话框
+    QDialog *peakDialog = new QDialog(this);
+    peakDialog->setWindowTitle("Stokes路峰值检测");
+    peakDialog->resize(600, 400);
     
-    for (int i = 0; i < m_peaks.size(); ++i) {
-        const PeakData &peak = m_peaks[i];
-        
-        int row = ui->tableWidgetPeaks->rowCount();
-        ui->tableWidgetPeaks->insertRow(row);
-        
-        // 波长
-        QTableWidgetItem *wavelengthItem = new QTableWidgetItem(
-            QString::number(peak.wavelength, 'f', 2));
-        wavelengthItem->setTextAlignment(Qt::AlignCenter);
-        ui->tableWidgetPeaks->setItem(row, 0, wavelengthItem);
-        
-        // 强度
-        QTableWidgetItem *intensityItem = new QTableWidgetItem(
-            QString::number(peak.intensity));
-        intensityItem->setTextAlignment(Qt::AlignCenter);
-        ui->tableWidgetPeaks->setItem(row, 1, intensityItem);
-        
-        // FWHM
-        QTableWidgetItem *fwhmItem = new QTableWidgetItem(
-            QString::number(peak.fwhm, 'f', 2));
-        fwhmItem->setTextAlignment(Qt::AlignCenter);
-        ui->tableWidgetPeaks->setItem(row, 2, fwhmItem);
-    }
+    // 创建布局
+    QVBoxLayout *mainLayout = new QVBoxLayout(peakDialog);
     
-    qDebug() << "峰值表格已更新，共" << m_peaks.size() << "行";
+    // 创建按钮行
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    
+    QPushButton *btnDetect = new QPushButton("检测峰值", peakDialog);
+    QPushButton *btnExport = new QPushButton("导出峰值", peakDialog);
+    QPushButton *btnClear = new QPushButton("清除峰值", peakDialog);
+    
+    buttonLayout->addWidget(btnDetect);
+    buttonLayout->addWidget(btnExport);
+    buttonLayout->addWidget(btnClear);
+    buttonLayout->addStretch();
+    
+    mainLayout->addLayout(buttonLayout);
+    
+    // 创建峰值表格
+    QTableWidget *peakTable = new QTableWidget(peakDialog);
+    peakTable->setColumnCount(3);
+    peakTable->setHorizontalHeaderLabels({"序号", "像素索引", "强度"});
+    peakTable->horizontalHeader()->setStretchLastSection(true);
+    
+    mainLayout->addWidget(peakTable);
+    
+    // 连接按钮信号
+    connect(btnDetect, &QPushButton::clicked, [this, peakTable]() {
+        if (m_lastSpectrumDataStokes.isEmpty()) {
+            QMessageBox::warning(this, "错误", "没有可用的Stokes路光谱数据，请先进行测量");
+            return;
+        }
+        
+        // 执行峰值检测
+        m_peaksStokes.clear();
+        
+        int windowSize = 5;
+        for (int i = windowSize; i < m_lastSpectrumDataStokes.size() - windowSize; i++) {
+            bool isPeak = true;
+            int currentValue = m_lastSpectrumDataStokes[i];
+            
+            for (int j = -windowSize; j <= windowSize; j++) {
+                if (j != 0 && m_lastSpectrumDataStokes[i + j] >= currentValue) {
+                    isPeak = false;
+                    break;
+                }
+            }
+            
+            if (isPeak && currentValue > 1000) {
+                PeakData peak;
+                peak.wavelength = i;
+                peak.intensity = currentValue;
+                peak.pixelIndex = i;
+                peak.fwhm = 0.0;
+                m_peaksStokes.append(peak);
+            }
+        }
+        
+        // 更新表格
+        peakTable->setRowCount(m_peaksStokes.size());
+        for (int i = 0; i < m_peaksStokes.size(); i++) {
+            peakTable->setItem(i, 0, new QTableWidgetItem(QString::number(i + 1)));
+            peakTable->setItem(i, 1, new QTableWidgetItem(QString::number(m_peaksStokes[i].pixelIndex)));
+            peakTable->setItem(i, 2, new QTableWidgetItem(QString::number(m_peaksStokes[i].intensity)));
+        }
+        
+        updateStatusBar(QString("Stokes路检测到 %1 个峰值").arg(m_peaksStokes.size()));
+        qDebug() << "Stokes路峰值检测完成，共检测到" << m_peaksStokes.size() << "个峰值";
+    });
+    
+    connect(btnExport, &QPushButton::clicked, [this]() {
+        if (m_peaksStokes.isEmpty()) {
+            QMessageBox::warning(this, "错误", "没有Stokes路峰值数据可导出，请先检测峰值");
+            return;
+        }
+        
+        QString fileName = QFileDialog::getSaveFileName(this, "导出Stokes路峰值数据", 
+                                                        "", "CSV文件 (*.csv)");
+        if (fileName.isEmpty()) {
+            return;
+        }
+        
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::warning(this, "错误", "无法创建文件");
+            return;
+        }
+        
+        QTextStream out(&file);
+        out << "Peak Number,Pixel Index,Intensity (counts)\n";
+        
+        for (int i = 0; i < m_peaksStokes.size(); i++) {
+            out << (i + 1) << "," 
+                << m_peaksStokes[i].pixelIndex << "," 
+                << m_peaksStokes[i].intensity << "\n";
+        }
+        
+        file.close();
+        
+        updateStatusBar("Stokes路峰值数据已导出");
+        qDebug() << "Stokes路峰值数据已导出到:" << fileName;
+    });
+    
+    connect(btnClear, &QPushButton::clicked, [this, peakTable]() {
+        m_peaksStokes.clear();
+        peakTable->setRowCount(0);
+        updateStatusBar("Stokes路峰值数据已清除");
+        qDebug() << "Stokes路峰值数据已清除";
+    });
+    
+    // 显示对话框
+    peakDialog->exec();
+    peakDialog->deleteLater();
 }
 
-void Integration::exportPeaksToCSV()
-{
-    QString fileName = QFileDialog::getSaveFileName(
-        this,
-        "导出峰值数据",
-        QCoreApplication::applicationDirPath() + "/peaks_data.csv",
-        "CSV文件 (*.csv);;所有文件 (*)"
-    );
-    
-    if (fileName.isEmpty()) {
-        return;
-    }
-    
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "错误", "无法创建文件：" + fileName);
-        return;
-    }
-    
-    QTextStream out(&file);
-    
-    // Qt 6: 设置编码为 UTF-8
-    out.setEncoding(QStringConverter::Utf8);
-    
-    // 写入 UTF-8 BOM（Excel 识别中文）
-    out << "\xEF\xBB\xBF";
-    
-    // 写入表头
-    out << "波长 [nm],强度 [counts],FWHM [nm]\n";
-    
-    // 写入数据
-    for (const PeakData &peak : m_peaks) {
-        out << QString::number(peak.wavelength, 'f', 2) << ","
-            << peak.intensity << ","
-            << QString::number(peak.fwhm, 'f', 2) << "\n";
-    }
-    
-    file.close();
-    
-    updateStatusBar("峰值数据已导出: " + fileName);
-    qDebug() << "峰值数据已导出:" << fileName;
-    QMessageBox::information(this, "导出成功", 
-        QString("峰值数据已导出到:\n%1\n\n共导出 %2 个峰值")
-        .arg(fileName).arg(m_peaks.size()));
-}
+// ========== 峰值检测辅助函数 ==========
 
 double Integration::calculateFWHM(int peakIndex, const QVector<int> &data)
 {
@@ -1122,26 +1330,26 @@ double Integration::calculateFWHM(int peakIndex, const QVector<int> &data)
 
 void Integration::startMeasurement()
 {
-    if (m_spectrometer->startScan()) {
-        m_isMeasuring = true;
+    if (m_spectrometerFOPO->startScan()) {
+        m_isMeasuringFOPO = true;
         updateStatusBar("开始光谱测量");
         qDebug() << "开始光谱测量";
     } else {
-        QMessageBox::warning(this, "错误", "启动测量失败：" + m_spectrometer->getLastError());
+        QMessageBox::warning(this, "错误", "启动测量失败：" + m_spectrometerFOPO->getLastError());
     }
 }
 
 void Integration::stopMeasurement()
 {
-    m_isMeasuring = false;
+    m_isMeasuringFOPO = false;
     updateStatusBar("停止光谱测量");
     qDebug() << "停止光谱测量";
 }
 
-void Integration::onMeasureTimeout()
+void Integration::onMeasureTimeoutFOPO()
 {
     // 定时器触发，执行一次测量
-    if (m_isContinuousMeasuring && m_spectrometer->isConnected()) {
+    if (m_isContinuousMeasuringFOPO && m_spectrometerFOPO->isConnected()) {
         startMeasurement();
     }
 }
@@ -1160,8 +1368,8 @@ void Integration::saveSpectrum()
     }
     
     // 保存图表为图片
-    if (m_chartView) {
-        QPixmap pixmap = m_chartView->grab();
+    if (m_chartViewFOPO) {
+        QPixmap pixmap = m_chartViewFOPO->grab();
         if (pixmap.save(fileName)) {
             updateStatusBar("光谱图片已保存: " + fileName);
             qDebug() << "光谱图片已保存:" << fileName;
@@ -1420,9 +1628,9 @@ void Integration::onStokesLaserStatusChanged(DeviceStatus status)
     qDebug() << "Stokes激光器状态改变:" << static_cast<int>(status);
 }
 
-void Integration::onSpectrometerStatusChanged(DeviceStatus status)
+void Integration::onSpectrometerFOPOStatusChanged(DeviceStatus status)
 {
-    updateStatusIndicator(ui->labelSpectrometerStatus, status);
+    updateStatusIndicator(ui->labelSpectrometerFOPOStatus, status);
     qDebug() << "光谱仪状态改变:" << static_cast<int>(status);
 }
 
@@ -1448,8 +1656,226 @@ void Integration::onDelayStatusChanged(DeviceStatus status)
 
 void Integration::onSpectrumDataReady(const QVector<int> &intensity)
 {
-    qDebug() << "收到光谱数据，像素数:" << intensity.size();
+    qDebug() << "收到FOPO路光谱数据，像素数:" << intensity.size();
     updateSpectrum(intensity);
+}
+
+
+// ========== Stokes路光谱仪连接与测量函数 ==========
+
+void Integration::on_btnConnectSpectrometerStokes_clicked()
+{
+    SerialConfig config = getSpectrometerStokesSerialConfig();
+    
+    // 检查是否选择了串口
+    if (config.portName.isEmpty()) {
+        QMessageBox::warning(this, "连接失败", 
+            "Stokes路光谱仪：请先选择串口设备！\n\n请在串口下拉框中选择一个可用的串口。");
+        return;
+    }
+    
+    // 显示连接中状态
+    updateStatusIndicator(ui->labelSpectrometerStokesStatus, DeviceStatus::Connecting);
+    updateStatusBar("Stokes路光谱仪正在连接...");
+    
+    // 处理 UI 事件
+    QCoreApplication::processEvents();
+    
+    // 使用 QTimer 异步执行连接操作
+    QTimer::singleShot(50, this, [this, config]() {
+        // 设置串口参数
+        m_spectrometerStokes->setPortName(config.portName);
+        m_spectrometerStokes->setBaudRate(config.baudRate);
+        m_spectrometerStokes->setDataBits(static_cast<int>(config.dataBits));
+        m_spectrometerStokes->setStopBits(static_cast<int>(config.stopBits));
+        m_spectrometerStokes->setParity(static_cast<int>(config.parity));
+        
+        // 处理 UI 事件
+        QCoreApplication::processEvents();
+        
+        if (m_spectrometerStokes->connect()) {
+            updateStatusBar("Stokes路光谱仪连接成功");
+            updateStatusIndicator(ui->labelSpectrometerStokesStatus, DeviceStatus::Connected);
+            
+            QString info = QString("像素数: %1, 序列号: %2")
+                           .arg(m_spectrometerStokes->getPixelLength())
+                           .arg(m_spectrometerStokes->getSerialNumber());
+            qDebug() << "Stokes路光谱仪信息:" << info;
+        } else {
+            updateStatusBar("Stokes路光谱仪连接失败");
+            updateStatusIndicator(ui->labelSpectrometerStokesStatus, DeviceStatus::Error);
+            QMessageBox::warning(this, "连接失败", m_spectrometerStokes->getLastError());
+        }
+    });
+}
+
+void Integration::on_btnDisconnectSpectrometerStokes_clicked()
+{
+    m_spectrometerStokes->disconnect();
+    updateStatusIndicator(ui->labelSpectrometerStokesStatus, DeviceStatus::Disconnected);
+    updateStatusBar("Stokes路光谱仪已断开");
+}
+
+void Integration::on_btnSingleMeasureStokes_clicked()
+{
+    if (!m_spectrometerStokes->isConnected()) {
+        QMessageBox::warning(this, "错误", "请先连接Stokes路光谱仪");
+        return;
+    }
+    
+    // 单次测量
+    if (m_spectrometerStokes->startScan()) {
+        m_isMeasuringStokes = true;
+        updateStatusBar("Stokes路开始单次测量");
+        qDebug() << "Stokes路开始单次测量";
+    } else {
+        QMessageBox::warning(this, "错误", "Stokes路启动测量失败：" + m_spectrometerStokes->getLastError());
+        qDebug() << "Stokes路启动测量失败：" << m_spectrometerStokes->getLastError();
+    }
+}
+
+void Integration::on_btnContinuousMeasureStokes_clicked()
+{
+    if (!m_spectrometerStokes->isConnected()) {
+        QMessageBox::warning(this, "错误", "请先连接Stokes路光谱仪");
+        return;
+    }
+    
+    // 获取积分时间并检查有效性
+    int integrationTime = m_spectrometerStokes->getIntegrationTime();
+    if (integrationTime <= 0) {
+        QMessageBox::warning(this, "错误", "无法获取积分时间，请检查光谱仪连接");
+        qDebug() << "Stokes路获取积分时间失败，返回值:" << integrationTime;
+        return;
+    }
+    
+    // 启动连续测量定时器
+    // 默认间隔：积分时间 + 100ms 余量
+    int intervalMs = integrationTime / 1000 + 100;
+    
+    // 确保间隔至少为100ms
+    if (intervalMs < 100) {
+        intervalMs = 100;
+        qDebug() << "Stokes路测量间隔过短，调整为最小值: 100ms";
+    }
+    
+    m_measureTimerStokes->start(intervalMs);
+    m_isContinuousMeasuringStokes = true;
+    m_isMeasuringStokes = true;
+    
+    // 立即执行一次测量
+    if (m_spectrometerStokes->startScan()) {
+        updateStatusBar(QString("Stokes路开始持续测量（间隔: %1 ms）").arg(intervalMs));
+        qDebug() << "Stokes路开始持续测量，间隔:" << intervalMs << "ms";
+    } else {
+        m_measureTimerStokes->stop();
+        m_isContinuousMeasuringStokes = false;
+        m_isMeasuringStokes = false;
+        QMessageBox::warning(this, "错误", "Stokes路启动测量失败");
+    }
+}
+
+void Integration::on_btnStopMeasureStokes_clicked()
+{
+    // 停止连续测量定时器
+    if (m_isContinuousMeasuringStokes) {
+        m_measureTimerStokes->stop();
+        m_isContinuousMeasuringStokes = false;
+        updateStatusBar("Stokes路持续测量已停止");
+        qDebug() << "Stokes路持续测量已停止";
+    }
+    
+    m_isMeasuringStokes = false;
+}
+
+void Integration::on_btnSavePlotStokes_clicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(
+        this,
+        "保存Stokes路光谱图片",
+        QCoreApplication::applicationDirPath() + "/spectrum_stokes.png",
+        "PNG图片 (*.png);;JPEG图片 (*.jpg *.jpeg);;所有文件 (*)"
+    );
+    
+    if (fileName.isEmpty()) {
+        return;
+    }
+    
+    // 保存图表为图片
+    if (m_chartViewStokes) {
+        QPixmap pixmap = m_chartViewStokes->grab();
+        if (pixmap.save(fileName)) {
+            updateStatusBar("Stokes路光谱图片已保存: " + fileName);
+            qDebug() << "Stokes路光谱图片已保存:" << fileName;
+            QMessageBox::information(this, "保存成功", "Stokes路光谱图片已保存到:\n" + fileName);
+        } else {
+            QMessageBox::warning(this, "保存失败", "无法保存Stokes路光谱图片");
+        }
+    } else {
+        QMessageBox::warning(this, "错误", "Stokes路图表视图未初始化");
+    }
+}
+
+void Integration::on_btnResetViewStokes_clicked()
+{
+    if (!m_chartStokes) {
+        QMessageBox::warning(this, "错误", "图表未初始化");
+        return;
+    }
+    
+    // 重置坐标轴范围
+    if (m_axisXStokes) {
+        m_axisXStokes->setRange(200, 1100);  // 波长范围 200-1100 nm
+    }
+    if (m_axisYStokes) {
+        m_axisYStokes->setRange(0, 65535);  // 强度范围
+    }
+    
+    // 重置缩放
+    m_chartStokes->zoomReset();
+    
+    updateStatusBar("Stokes路视图已重置");
+    qDebug() << "Stokes路视图已重置";
+}
+
+void Integration::on_btnClearPlotStokes_clicked()
+{
+    if (!m_seriesStokes) {
+        QMessageBox::warning(this, "错误", "数据系列未初始化");
+        return;
+    }
+    
+    // 清除数据
+    m_seriesStokes->clear();
+    m_lastSpectrumDataStokes.clear();
+    
+    updateStatusBar("Stokes路光谱数据已清除");
+    qDebug() << "Stokes路光谱数据已清除";
+}
+
+void Integration::onMeasureTimeoutStokes()
+{
+    // 定时器触发，执行一次测量
+    if (m_isContinuousMeasuringStokes && m_spectrometerStokes->isConnected()) {
+        m_spectrometerStokes->startScan();
+    }
+}
+
+void Integration::onSpectrometerStokesStatusChanged(DeviceStatus status)
+{
+    updateStatusIndicator(ui->labelSpectrometerStokesStatus, status);
+    qDebug() << "Stokes路光谱仪状态改变:" << static_cast<int>(status);
+}
+
+void Integration::onSpectrumDataReadyStokes(const QVector<int> &intensity)
+{
+    // 保存最新的光谱数据
+    m_lastSpectrumDataStokes = intensity;
+    
+    // 更新图表显示
+    updateSpectrumStokes(intensity);
+    
+    qDebug() << "Stokes路光谱数据已接收，数据点数量:" << intensity.size();
 }
 
 // ========== 错误处理槽函数 ==========
@@ -1464,82 +1890,143 @@ void Integration::onDeviceError(const QString &error)
 
 void Integration::initSpectrumChart()
 {
+    // ========== 初始化FOPO路光谱仪图表 ==========
     // 创建图表
-    m_chart = new QChart();
-    m_chart->setTitle("光谱数据");
-    m_chart->setAnimationOptions(QChart::NoAnimation);  // 禁用动画，提高性能
+    m_chartFOPO = new QChart();
+    m_chartFOPO->setTitle("FOPO路光谱数据");
+    m_chartFOPO->setAnimationOptions(QChart::NoAnimation);  // 禁用动画，提高性能
     
     // 创建数据系列
-    m_series = new QLineSeries();
-    m_series->setName("光谱强度");
-    m_series->setUseOpenGL(true);  // 启用OpenGL加速，大幅提升性能
-    m_chart->addSeries(m_series);
+    m_seriesFOPO = new QLineSeries();
+    m_seriesFOPO->setName("光谱强度");
+    m_seriesFOPO->setUseOpenGL(true);  // 启用OpenGL加速，大幅提升性能
+    m_chartFOPO->addSeries(m_seriesFOPO);
     
     // 创建坐标轴
-    m_axisX = new QValueAxis();
-    m_axisX->setTitleText("波长 [nm]");
-    m_axisX->setRange(200, 1100);
-    m_axisX->setGridLineVisible(true);  // 显示主网格线
-    m_axisX->setMinorGridLineVisible(true);  // 显示次网格线
-    m_axisX->setTickCount(10);  // 设置主刻度数量
-    m_axisX->setMinorTickCount(4);  // 设置次刻度数量
-    m_chart->addAxis(m_axisX, Qt::AlignBottom);
-    m_series->attachAxis(m_axisX);
+    m_axisXFOPO = new QValueAxis();
+    m_axisXFOPO->setTitleText("波长 [nm]");
+    m_axisXFOPO->setRange(200, 1100);
+    m_axisXFOPO->setGridLineVisible(true);
+    m_axisXFOPO->setMinorGridLineVisible(true);
+    m_axisXFOPO->setTickCount(10);
+    m_axisXFOPO->setMinorTickCount(4);
+    m_chartFOPO->addAxis(m_axisXFOPO, Qt::AlignBottom);
+    m_seriesFOPO->attachAxis(m_axisXFOPO);
     
-    m_axisY = new QValueAxis();
-    m_axisY->setTitleText("强度 [counts]");
-    m_axisY->setRange(0, 65535);
-    m_axisY->setGridLineVisible(true);  // 显示主网格线
-    m_axisY->setMinorGridLineVisible(true);  // 显示次网格线
-    m_axisY->setTickCount(10);  // 设置主刻度数量
-    m_axisY->setMinorTickCount(4);  // 设置次刻度数量
-    m_chart->addAxis(m_axisY, Qt::AlignLeft);
-    m_series->attachAxis(m_axisY);
+    m_axisYFOPO = new QValueAxis();
+    m_axisYFOPO->setTitleText("强度 [counts]");
+    m_axisYFOPO->setRange(0, 65535);
+    m_axisYFOPO->setGridLineVisible(true);
+    m_axisYFOPO->setMinorGridLineVisible(true);
+    m_axisYFOPO->setTickCount(10);
+    m_axisYFOPO->setMinorTickCount(4);
+    m_chartFOPO->addAxis(m_axisYFOPO, Qt::AlignLeft);
+    m_seriesFOPO->attachAxis(m_axisYFOPO);
     
-    // 显示图例
-    m_chart->legend()->setVisible(true);
-    m_chart->legend()->setAlignment(Qt::AlignTop);
+    // 隐藏图例（节省空间）
+    m_chartFOPO->legend()->setVisible(false);
     
     // 创建标准图表视图
-    m_chartView = new QChartView(m_chart);
-    m_chartView->setRenderHint(QPainter::Antialiasing);  // 抗锯齿
-    m_chartView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);  // 优化抗锯齿性能
-    m_chartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);  // 智能更新视口
+    m_chartViewFOPO = new QChartView(m_chartFOPO);
+    m_chartViewFOPO->setRenderHint(QPainter::Antialiasing);
+    m_chartViewFOPO->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);
+    m_chartViewFOPO->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
     
     // 安装事件过滤器以处理双击事件
-    m_chartView->installEventFilter(this);
+    m_chartViewFOPO->installEventFilter(this);
     
     // 将图表视图添加到UI布局中
-    QWidget *plotWidget = ui->widgetSpectrumPlot;
-    if (plotWidget) {
-        // 清除现有布局
-        if (plotWidget->layout()) {
+    QWidget *plotWidgetFOPO = ui->chartWidgetFOPO;
+    if (plotWidgetFOPO) {
+        if (plotWidgetFOPO->layout()) {
             QLayoutItem *item;
-            while ((item = plotWidget->layout()->takeAt(0)) != nullptr) {
+            while ((item = plotWidgetFOPO->layout()->takeAt(0)) != nullptr) {
                 delete item->widget();
                 delete item;
             }
-            delete plotWidget->layout();
+            delete plotWidgetFOPO->layout();
         }
         
-        // 创建新布局并添加图表
-        QVBoxLayout *layout = new QVBoxLayout(plotWidget);
+        QVBoxLayout *layout = new QVBoxLayout(plotWidgetFOPO);
         layout->setContentsMargins(0, 0, 0, 0);
-        layout->addWidget(m_chartView);
-        plotWidget->setLayout(layout);
+        layout->addWidget(m_chartViewFOPO);
+        plotWidgetFOPO->setLayout(layout);
     }
     
-    qDebug() << "光谱图表初始化完成 - OpenGL加速已启用，支持高性能实时绘图";
+    // ========== 初始化Stokes路光谱仪图表 ==========
+    // 创建图表
+    m_chartStokes = new QChart();
+    m_chartStokes->setTitle("Stokes路光谱数据");
+    m_chartStokes->setAnimationOptions(QChart::NoAnimation);
+    
+    // 创建数据系列
+    m_seriesStokes = new QLineSeries();
+    m_seriesStokes->setName("光谱强度");
+    m_seriesStokes->setUseOpenGL(true);
+    m_chartStokes->addSeries(m_seriesStokes);
+    
+    // 创建坐标轴
+    m_axisXStokes = new QValueAxis();
+    m_axisXStokes->setTitleText("波长 [nm]");
+    m_axisXStokes->setRange(200, 1100);
+    m_axisXStokes->setGridLineVisible(true);
+    m_axisXStokes->setMinorGridLineVisible(true);
+    m_axisXStokes->setTickCount(10);
+    m_axisXStokes->setMinorTickCount(4);
+    m_chartStokes->addAxis(m_axisXStokes, Qt::AlignBottom);
+    m_seriesStokes->attachAxis(m_axisXStokes);
+    
+    m_axisYStokes = new QValueAxis();
+    m_axisYStokes->setTitleText("强度 [counts]");
+    m_axisYStokes->setRange(0, 65535);
+    m_axisYStokes->setGridLineVisible(true);
+    m_axisYStokes->setMinorGridLineVisible(true);
+    m_axisYStokes->setTickCount(10);
+    m_axisYStokes->setMinorTickCount(4);
+    m_chartStokes->addAxis(m_axisYStokes, Qt::AlignLeft);
+    m_seriesStokes->attachAxis(m_axisYStokes);
+    
+    // 隐藏图例（节省空间）
+    m_chartStokes->legend()->setVisible(false);
+    
+    // 创建标准图表视图
+    m_chartViewStokes = new QChartView(m_chartStokes);
+    m_chartViewStokes->setRenderHint(QPainter::Antialiasing);
+    m_chartViewStokes->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);
+    m_chartViewStokes->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+    
+    // 安装事件过滤器以处理双击事件
+    m_chartViewStokes->installEventFilter(this);
+    
+    // 将图表视图添加到UI布局中
+    QWidget *plotWidgetStokes = ui->chartWidgetStokes;
+    if (plotWidgetStokes) {
+        if (plotWidgetStokes->layout()) {
+            QLayoutItem *item;
+            while ((item = plotWidgetStokes->layout()->takeAt(0)) != nullptr) {
+                delete item->widget();
+                delete item;
+            }
+            delete plotWidgetStokes->layout();
+        }
+        
+        QVBoxLayout *layout = new QVBoxLayout(plotWidgetStokes);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->addWidget(m_chartViewStokes);
+        plotWidgetStokes->setLayout(layout);
+    }
+    
+    qDebug() << "双光谱图表初始化完成 - OpenGL加速已启用，支持高性能实时绘图";
 }
 
 void Integration::updateSpectrum(const QVector<int> &intensity)
 {
-    if (!m_series) return;
+    if (!m_seriesFOPO) return;
     
     int totalPixels = intensity.size();
     
     // 保存光谱数据
-    m_lastSpectrumData = intensity;
+    m_lastSpectrumDataFOPO = intensity;
     
     // 使用 QVector<QPointF> 批量更新数据，避免多次重绘
     QVector<QPointF> points;
@@ -1553,36 +2040,68 @@ void Integration::updateSpectrum(const QVector<int> &intensity)
     }
     
     // 批量替换数据（只触发一次重绘）
-    m_series->replace(points);
+    m_seriesFOPO->replace(points);
     
     // 自动调整Y轴范围
     if (!intensity.isEmpty()) {
         int maxValue = *std::max_element(intensity.begin(), intensity.end());
-        m_axisY->setRange(0, maxValue * 1.1);
+        m_axisYFOPO->setRange(0, maxValue * 1.1);
     }
     
-    qDebug() << "光谱数据已更新，数据点数量:" << totalPixels;
+    qDebug() << "FOPO路光谱数据已更新，数据点数量:" << totalPixels;
+}
+
+void Integration::updateSpectrumStokes(const QVector<int> &intensity)
+{
+    if (!m_seriesStokes) return;
+    
+    int totalPixels = intensity.size();
+    
+    // 保存光谱数据
+    m_lastSpectrumDataStokes = intensity;
+    
+    // 使用 QVector<QPointF> 批量更新数据，避免多次重绘
+    QVector<QPointF> points;
+    points.reserve(totalPixels);
+    
+    // 将像素转换为波长并添加数据点
+    for (int i = 0; i < totalPixels; ++i) {
+        // 波长范围：200-1100 nm
+        double wavelength = 200.0 + (900.0 * i / (totalPixels - 1));
+        points.append(QPointF(wavelength, intensity[i]));
+    }
+    
+    // 批量替换数据（只触发一次重绘）
+    m_seriesStokes->replace(points);
+    
+    // 自动调整Y轴范围
+    if (!intensity.isEmpty()) {
+        int maxValue = *std::max_element(intensity.begin(), intensity.end());
+        m_axisYStokes->setRange(0, maxValue * 1.1);
+    }
+    
+    qDebug() << "Stokes路光谱数据已更新，数据点数量:" << totalPixels;
 }
 
 void Integration::showChartMaximized()
 {
     // 如果最大化窗口已存在，直接显示
-    if (m_chartMaximizedDialog) {
-        m_chartMaximizedDialog->show();
-        m_chartMaximizedDialog->raise();
-        m_chartMaximizedDialog->activateWindow();
+    if (m_chartMaximizedDialogFOPO) {
+        m_chartMaximizedDialogFOPO->show();
+        m_chartMaximizedDialogFOPO->raise();
+        m_chartMaximizedDialogFOPO->activateWindow();
         return;
     }
     
     // 创建最大化窗口
-    m_chartMaximizedDialog = new QDialog(this);
-    m_chartMaximizedDialog->setWindowTitle("光谱数据 - 最大化视图");
-    m_chartMaximizedDialog->setWindowFlags(Qt::Window | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
-    m_chartMaximizedDialog->resize(1200, 800);
+    m_chartMaximizedDialogFOPO = new QDialog(this);
+    m_chartMaximizedDialogFOPO->setWindowTitle("FOPO路光谱数据 - 最大化视图");
+    m_chartMaximizedDialogFOPO->setWindowFlags(Qt::Window | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
+    m_chartMaximizedDialogFOPO->resize(1200, 800);
     
     // 创建新的图表和数据系列（复制当前数据）
     QChart *maximizedChart = new QChart();
-    maximizedChart->setTitle("光谱数据");
+    maximizedChart->setTitle("FOPO路光谱数据");
     maximizedChart->setAnimationOptions(QChart::NoAnimation);
     
     // 创建新的数据系列并复制数据
@@ -1591,8 +2110,8 @@ void Integration::showChartMaximized()
     maximizedSeries->setUseOpenGL(true);
     
     // 如果有数据则复制，否则创建空系列
-    if (m_series && m_series->count() > 0) {
-        maximizedSeries->replace(m_series->points());
+    if (m_seriesFOPO && m_seriesFOPO->count() > 0) {
+        maximizedSeries->replace(m_seriesFOPO->points());
     }
     
     maximizedChart->addSeries(maximizedSeries);
@@ -1600,8 +2119,8 @@ void Integration::showChartMaximized()
     // 创建坐标轴（复制当前坐标轴设置）
     QValueAxis *axisX = new QValueAxis();
     axisX->setTitleText("波长 [nm]");
-    if (m_axisX) {
-        axisX->setRange(m_axisX->min(), m_axisX->max());
+    if (m_axisXFOPO) {
+        axisX->setRange(m_axisXFOPO->min(), m_axisXFOPO->max());
     } else {
         axisX->setRange(200, 1100);
     }
@@ -1614,8 +2133,8 @@ void Integration::showChartMaximized()
     
     QValueAxis *axisY = new QValueAxis();
     axisY->setTitleText("强度 [counts]");
-    if (m_axisY) {
-        axisY->setRange(m_axisY->min(), m_axisY->max());
+    if (m_axisYFOPO) {
+        axisY->setRange(m_axisYFOPO->min(), m_axisYFOPO->max());
     } else {
         axisY->setRange(0, 65535);
     }
@@ -1631,30 +2150,30 @@ void Integration::showChartMaximized()
     maximizedChart->legend()->setAlignment(Qt::AlignTop);
     
     // 创建图表视图
-    QChartView *maximizedChartView = new QChartView(maximizedChart, m_chartMaximizedDialog);
+    QChartView *maximizedChartView = new QChartView(maximizedChart, m_chartMaximizedDialogFOPO);
     maximizedChartView->setRenderHint(QPainter::Antialiasing);
     maximizedChartView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);
     maximizedChartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
     
     // 设置布局
-    QVBoxLayout *layout = new QVBoxLayout(m_chartMaximizedDialog);
+    QVBoxLayout *layout = new QVBoxLayout(m_chartMaximizedDialogFOPO);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(maximizedChartView);
-    m_chartMaximizedDialog->setLayout(layout);
+    m_chartMaximizedDialogFOPO->setLayout(layout);
     
     // 当窗口关闭时清理资源
-    connect(m_chartMaximizedDialog, &QDialog::finished, this, [this]() {
+    connect(m_chartMaximizedDialogFOPO, &QDialog::finished, this, [this]() {
         // 删除最大化窗口（图表会自动随窗口删除）
-        if (m_chartMaximizedDialog) {
-            m_chartMaximizedDialog->deleteLater();
-            m_chartMaximizedDialog = nullptr;
+        if (m_chartMaximizedDialogFOPO) {
+            m_chartMaximizedDialogFOPO->deleteLater();
+            m_chartMaximizedDialogFOPO = nullptr;
         }
         
         qDebug() << "图表最大化窗口已关闭";
     });
     
     // 显示最大化窗口
-    m_chartMaximizedDialog->showMaximized();
+    m_chartMaximizedDialogFOPO->showMaximized();
     
     qDebug() << "图表已最大化显示";
 }
@@ -1694,11 +2213,11 @@ SerialConfig Integration::getStokesLaserSerialConfig()
     return config;
 }
 
-SerialConfig Integration::getSpectrometerSerialConfig()
+SerialConfig Integration::getSpectrometerFOPOSerialConfig()
 {
     SerialConfig config;
-    config.portName = ui->comboBoxSpectrometerPort->currentText();
-    config.baudRate = ui->comboBoxSpectrometerBaudRate->currentData().toInt();
+    config.portName = ui->comboBoxSpectrometerFOPOPort->currentText();
+    config.baudRate = ui->comboBoxSpectrometerFOPOBaudRate->currentData().toInt();
     config.dataBits = QSerialPort::Data8;
     config.stopBits = QSerialPort::OneStop;
     config.parity = QSerialPort::NoParity;
@@ -1764,30 +2283,48 @@ void Integration::initPresetTables()
 {
     // 初始化振镜页 - 光源功率预设表格
     m_powerPresetTable = ui->tableWidgetPowerPresets;
-    m_powerPresetTable->setColumnCount(6);  // 减少到6列：序号 + 5个数据列
-    m_powerPresetTable->setHorizontalHeaderLabels({"序号", "振镜起始(deg)", "振镜结束(deg)", 
+    m_powerPresetTable->setColumnCount(5);  // 删除序号列,只保留5列数据
+    m_powerPresetTable->setHorizontalHeaderLabels({"振镜起始(deg)", "振镜结束(deg)", 
                                                     "种子源泵(mA)", "FOPO泵(A)", "Stokes泵(mA)"});
     m_powerPresetTable->horizontalHeader()->setStretchLastSection(false);
-    m_powerPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);  // 整行选择
-    m_powerPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);  // 单行选择
+    m_powerPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_powerPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);
     
     // 设置表头字体大小
     QFont headerFont = m_powerPresetTable->horizontalHeader()->font();
-    headerFont.setPointSize(9);  // 设置表头字体为9号
+    headerFont.setPointSize(9);
     m_powerPresetTable->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（缩小10px以适应屏幕）
-    m_powerPresetTable->setColumnWidth(0, 50);    // 序号列 (60-10)
-    m_powerPresetTable->setColumnWidth(1, 100);   // 振镜起始 (110-10)
-    m_powerPresetTable->setColumnWidth(2, 100);   // 振镜结束 (110-10)
-    m_powerPresetTable->setColumnWidth(3, 100);   // 种子源泵 (110-10)
-    m_powerPresetTable->setColumnWidth(4, 80);    // FOPO泵 (90-10)
-    m_powerPresetTable->setColumnWidth(5, 100);   // Stokes泵 (110-10)
+    // 设置列宽
+    m_powerPresetTable->setColumnWidth(0, 110);
+    m_powerPresetTable->setColumnWidth(1, 110);
+    m_powerPresetTable->setColumnWidth(2, 110);
+    m_powerPresetTable->setColumnWidth(3, 90);
+    m_powerPresetTable->setColumnWidth(4, 110);
+    
+    // 添加默认6行数据
+    const QStringList galvoPowerData[6] = {
+        {"0", "0.2", "100", "7", "400"},
+        {"0.2", "0.4", "110", "7", "450"},
+        {"0.4", "0.6", "90", "7", "400"},
+        {"0.6", "0.8", "105", "7", "350"},
+        {"0.8", "1.0", "110", "9", "300"},
+        {"1.0", "1.2", "100", "10", "370"}
+    };
+    
+    for (int row = 0; row < 6; ++row) {
+        m_powerPresetTable->insertRow(row);
+        for (int col = 0; col < 5; ++col) {
+            QTableWidgetItem *item = new QTableWidgetItem(galvoPowerData[row][col]);
+            item->setTextAlignment(Qt::AlignCenter);
+            m_powerPresetTable->setItem(row, col, item);
+        }
+    }
     
     // 初始化振镜页 - 延迟线预设表格
     m_delayPresetTableGalvo = ui->tableWidgetDelayPresetsGalvo;
-    m_delayPresetTableGalvo->setColumnCount(3);  // 减少到3列：序号 + 2个数据列
-    m_delayPresetTableGalvo->setHorizontalHeaderLabels({"序号", "振镜角度(deg)", "延迟时间(PS)"});
+    m_delayPresetTableGalvo->setColumnCount(2);  // 删除序号列,只保留2列数据
+    m_delayPresetTableGalvo->setHorizontalHeaderLabels({"振镜角度(deg)", "延迟时间(PS)"});
     m_delayPresetTableGalvo->horizontalHeader()->setStretchLastSection(false);
     m_delayPresetTableGalvo->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_delayPresetTableGalvo->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -1797,15 +2334,33 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_delayPresetTableGalvo->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（调整为更紧凑的宽度）
-    m_delayPresetTableGalvo->setColumnWidth(0, 60);    // 序号列
-    m_delayPresetTableGalvo->setColumnWidth(1, 130);   // 振镜角度
-    m_delayPresetTableGalvo->setColumnWidth(2, 120);   // 延迟时间
+    // 设置列宽
+    m_delayPresetTableGalvo->setColumnWidth(0, 150);
+    m_delayPresetTableGalvo->setColumnWidth(1, 150);
+    
+    // 添加默认6行数据
+    const QStringList galvoDelayData[6] = {
+        {"0.1", "3"},
+        {"0.2", "4"},
+        {"0.3", "5"},
+        {"0.4", "6"},
+        {"0.5", "7"},
+        {"1.2", "150"}
+    };
+    
+    for (int row = 0; row < 6; ++row) {
+        m_delayPresetTableGalvo->insertRow(row);
+        for (int col = 0; col < 2; ++col) {
+            QTableWidgetItem *item = new QTableWidgetItem(galvoDelayData[row][col]);
+            item->setTextAlignment(Qt::AlignCenter);
+            m_delayPresetTableGalvo->setItem(row, col, item);
+        }
+    }
     
     // 初始化位移台页 - 电控与功率预设表格
     m_powerPresetTableStage = ui->tableWidgetPowerPresetsStage;
-    m_powerPresetTableStage->setColumnCount(6);  // 减少到6列：序号 + 5个数据列
-    m_powerPresetTableStage->setHorizontalHeaderLabels({"序号", "旋转台角度(deg)", "位移台位置(mm)", 
+    m_powerPresetTableStage->setColumnCount(5);  // 删除序号列,只保留5列数据
+    m_powerPresetTableStage->setHorizontalHeaderLabels({"旋转台角度(deg)", "位移台位置(mm)", 
                                                          "种子源泵(mA)", "FOPO泵(A)", "Stokes泵(mA)"});
     m_powerPresetTableStage->horizontalHeader()->setStretchLastSection(false);
     m_powerPresetTableStage->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -1816,18 +2371,36 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_powerPresetTableStage->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（缩小10px以适应屏幕）
-    m_powerPresetTableStage->setColumnWidth(0, 50);    // 序号列 (60-10)
-    m_powerPresetTableStage->setColumnWidth(1, 110);   // 旋转台角度 (120-10)
-    m_powerPresetTableStage->setColumnWidth(2, 110);   // 位移台位置 (120-10)
-    m_powerPresetTableStage->setColumnWidth(3, 100);   // 种子源泵 (110-10)
-    m_powerPresetTableStage->setColumnWidth(4, 80);    // FOPO泵 (90-10)
-    m_powerPresetTableStage->setColumnWidth(5, 100);   // Stokes泵 (110-10)
+    // 设置列宽
+    m_powerPresetTableStage->setColumnWidth(0, 120);
+    m_powerPresetTableStage->setColumnWidth(1, 120);
+    m_powerPresetTableStage->setColumnWidth(2, 110);
+    m_powerPresetTableStage->setColumnWidth(3, 90);
+    m_powerPresetTableStage->setColumnWidth(4, 110);
+    
+    // 添加默认6行数据
+    const QStringList stagePowerData[6] = {
+        {"0", "3", "100", "7", "400"},
+        {"3", "6", "110", "7", "450"},
+        {"6", "9", "90", "7", "400"},
+        {"9", "12", "105", "7", "350"},
+        {"12", "15", "110", "9", "300"},
+        {"15", "18", "100", "10", "370"}
+    };
+    
+    for (int row = 0; row < 6; ++row) {
+        m_powerPresetTableStage->insertRow(row);
+        for (int col = 0; col < 5; ++col) {
+            QTableWidgetItem *item = new QTableWidgetItem(stagePowerData[row][col]);
+            item->setTextAlignment(Qt::AlignCenter);
+            m_powerPresetTableStage->setItem(row, col, item);
+        }
+    }
     
     // 初始化位移台页 - 延迟线预设表格
     m_delayPresetTable = ui->tableWidgetDelayPresets;
-    m_delayPresetTable->setColumnCount(3);  // 3列：序号 + 旋转台角度 + 延迟时间
-    m_delayPresetTable->setHorizontalHeaderLabels({"序号", "旋转台角度(deg)", "延迟时间(PS)"});
+    m_delayPresetTable->setColumnCount(2);  // 删除序号列,只保留2列数据
+    m_delayPresetTable->setHorizontalHeaderLabels({"旋转台角度(deg)", "延迟时间(PS)"});
     m_delayPresetTable->horizontalHeader()->setStretchLastSection(false);
     m_delayPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_delayPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -1837,20 +2410,29 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_delayPresetTable->horizontalHeader()->setFont(headerFont);
     
-    // 设置列宽（调整为更紧凑的宽度）
-    m_delayPresetTable->setColumnWidth(0, 60);    // 序号列
-    m_delayPresetTable->setColumnWidth(1, 130);   // 旋转台角度
-    m_delayPresetTable->setColumnWidth(2, 120);   // 延迟时间
+    // 设置列宽
+    m_delayPresetTable->setColumnWidth(0, 150);
+    m_delayPresetTable->setColumnWidth(1, 150);
     
-    // 设置所有表格的最小和最大高度，避免占用过多空间
+    // 添加默认6行数据(与振镜页延迟线相同)
+    for (int row = 0; row < 6; ++row) {
+        m_delayPresetTable->insertRow(row);
+        for (int col = 0; col < 2; ++col) {
+            QTableWidgetItem *item = new QTableWidgetItem(galvoDelayData[row][col]);
+            item->setTextAlignment(Qt::AlignCenter);
+            m_delayPresetTable->setItem(row, col, item);
+        }
+    }
+    
+    // 设置所有表格的最小和最大高度
     m_powerPresetTable->setMinimumHeight(100);
-    m_powerPresetTable->setMaximumHeight(200);
+    m_powerPresetTable->setMaximumHeight(250);
     m_delayPresetTableGalvo->setMinimumHeight(100);
-    m_delayPresetTableGalvo->setMaximumHeight(200);
+    m_delayPresetTableGalvo->setMaximumHeight(250);
     m_powerPresetTableStage->setMinimumHeight(100);
-    m_powerPresetTableStage->setMaximumHeight(200);
+    m_powerPresetTableStage->setMaximumHeight(250);
     m_delayPresetTable->setMinimumHeight(100);
-    m_delayPresetTable->setMaximumHeight(200);
+    m_delayPresetTable->setMaximumHeight(250);
     
     qDebug() << "预设表格初始化完成";
 }
@@ -2095,34 +2677,11 @@ void Integration::addPowerPresetRow()
     int row = m_powerPresetTable->rowCount();
     m_powerPresetTable->insertRow(row);
     
-    // 第0列：序号（只读）
-    QTableWidgetItem *numberItem = new QTableWidgetItem(QString::number(row + 1));
-    numberItem->setTextAlignment(Qt::AlignCenter);
-    numberItem->setFlags(numberItem->flags() & ~Qt::ItemIsEditable);  // 设置为只读
-    m_powerPresetTable->setItem(row, 0, numberItem);
-    
-    // 第1-5列：添加输入框（限制为三位小数的浮点数）
-    for (int col = 1; col <= 5; col++) {
-        QLineEdit *lineEdit = new QLineEdit();
-        lineEdit->setText("0.000");
-        lineEdit->setAlignment(Qt::AlignCenter);
-        
-        // 设置验证器：允许浮点数，最多三位小数
-        QDoubleValidator *validator = new QDoubleValidator(lineEdit);
-        validator->setDecimals(3);  // 最多三位小数
-        validator->setNotation(QDoubleValidator::StandardNotation);
-        lineEdit->setValidator(validator);
-        
-        // 当编辑完成时，自动格式化为三位小数
-        connect(lineEdit, &QLineEdit::editingFinished, [lineEdit]() {
-            bool ok;
-            double value = lineEdit->text().toDouble(&ok);
-            if (ok) {
-                lineEdit->setText(QString::number(value, 'f', 3));
-            }
-        });
-        
-        m_powerPresetTable->setCellWidget(row, col, lineEdit);
+    // 添加5列数据(删除了序号列)
+    for (int col = 0; col < 5; col++) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
+        item->setTextAlignment(Qt::AlignCenter);
+        m_powerPresetTable->setItem(row, col, item);
     }
     
     qDebug() << "添加功率预设行，当前行数:" << m_powerPresetTable->rowCount();
@@ -2141,35 +2700,34 @@ QList<PowerPreset> Integration::loadPowerPresetsFromTable()
     for (int row = 0; row < m_powerPresetTable->rowCount(); row++) {
         PowerPreset preset;
         
-        // 第0列是序号，跳过
-        // 读取振镜角度起（第1列）
-        QLineEdit *lineEditStart = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 1));
-        if (lineEditStart) {
-            preset.galvoAngleStart = lineEditStart->text().toFloat();
+        // 读取振镜角度起（第0列）
+        QTableWidgetItem *itemStart = m_powerPresetTable->item(row, 0);
+        if (itemStart) {
+            preset.galvoAngleStart = itemStart->text().toFloat();
         }
         
-        // 读取振镜角度止（第2列）
-        QLineEdit *lineEditEnd = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 2));
-        if (lineEditEnd) {
-            preset.galvoAngleEnd = lineEditEnd->text().toFloat();
+        // 读取振镜角度止（第1列）
+        QTableWidgetItem *itemEnd = m_powerPresetTable->item(row, 1);
+        if (itemEnd) {
+            preset.galvoAngleEnd = itemEnd->text().toFloat();
         }
         
-        // 读取种子源泵电流（第3列）
-        QLineEdit *lineEditSeed = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 3));
-        if (lineEditSeed) {
-            preset.seedPumpCurrent = lineEditSeed->text().toFloat();
+        // 读取种子源泵电流（第2列）
+        QTableWidgetItem *itemSeed = m_powerPresetTable->item(row, 2);
+        if (itemSeed) {
+            preset.seedPumpCurrent = itemSeed->text().toFloat();
         }
         
-        // 读取FOPO泵电流（第4列）
-        QLineEdit *lineEditFOPO = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 4));
-        if (lineEditFOPO) {
-            preset.fopoPumpCurrent = lineEditFOPO->text().toFloat();
+        // 读取FOPO泵电流（第3列）
+        QTableWidgetItem *itemFOPO = m_powerPresetTable->item(row, 3);
+        if (itemFOPO) {
+            preset.fopoPumpCurrent = itemFOPO->text().toFloat();
         }
         
-        // 读取Stokes泵电流（第5列）
-        QLineEdit *lineEditStokes = qobject_cast<QLineEdit*>(m_powerPresetTable->cellWidget(row, 5));
-        if (lineEditStokes) {
-            preset.stokesPumpCurrent = lineEditStokes->text().toFloat();
+        // 读取Stokes泵电流（第4列）
+        QTableWidgetItem *itemStokes = m_powerPresetTable->item(row, 4);
+        if (itemStokes) {
+            preset.stokesPumpCurrent = itemStokes->text().toFloat();
         }
         
         presets.append(preset);
@@ -2657,34 +3215,21 @@ void Integration::addPowerPresetRowStage()
     int row = m_powerPresetTableStage->rowCount();
     m_powerPresetTableStage->insertRow(row);
     
-    // 第0列：序号（只读）
-    QTableWidgetItem *numberItem = new QTableWidgetItem(QString::number(row + 1));
-    numberItem->setTextAlignment(Qt::AlignCenter);
-    numberItem->setFlags(numberItem->flags() & ~Qt::ItemIsEditable);  // 设置为只读
-    m_powerPresetTableStage->setItem(row, 0, numberItem);
-    
-    // 第1-5列：添加输入框（限制为三位小数的浮点数）
-    for (int col = 1; col <= 5; col++) {
-        QLineEdit *lineEdit = new QLineEdit();
-        lineEdit->setText("0.000");
-        lineEdit->setAlignment(Qt::AlignCenter);
+    // 添加所有列的item
+    for (int col = 0; col < 6; col++) {
+        QTableWidgetItem *item = new QTableWidgetItem();
+        item->setTextAlignment(Qt::AlignCenter);  // 居中对齐
         
-        // 设置验证器：允许浮点数，最多三位小数
-        QDoubleValidator *validator = new QDoubleValidator(lineEdit);
-        validator->setDecimals(3);  // 最多三位小数
-        validator->setNotation(QDoubleValidator::StandardNotation);
-        lineEdit->setValidator(validator);
+        if (col == 0) {
+            // 序号列：自动编号且不可编辑
+            item->setText(QString::number(row + 1));
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        } else {
+            // 数据列：默认为空,可编辑
+            item->setText("");
+        }
         
-        // 当编辑完成时，自动格式化为三位小数
-        connect(lineEdit, &QLineEdit::editingFinished, [lineEdit]() {
-            bool ok;
-            double value = lineEdit->text().toDouble(&ok);
-            if (ok) {
-                lineEdit->setText(QString::number(value, 'f', 3));
-            }
-        });
-        
-        m_powerPresetTableStage->setCellWidget(row, col, lineEdit);
+        m_powerPresetTableStage->setItem(row, col, item);
     }
     
     qDebug() << "添加功率预设行（位移台页），当前行数:" << m_powerPresetTableStage->rowCount();
@@ -2703,35 +3248,34 @@ QList<StagePowerPreset> Integration::loadPowerPresetsFromTableStage()
     for (int row = 0; row < m_powerPresetTableStage->rowCount(); row++) {
         StagePowerPreset preset;
         
-        // 第0列是序号，跳过
-        // 读取旋转台角度（第1列）
-        QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 1));
-        if (lineEditAngle) {
-            preset.stageAngle = lineEditAngle->text().toFloat();
+        // 读取旋转台角度（第0列）
+        QTableWidgetItem *itemAngle = m_powerPresetTableStage->item(row, 0);
+        if (itemAngle) {
+            preset.stageAngle = itemAngle->text().toFloat();
         }
         
-        // 读取直线台位置（第2列）
-        QLineEdit *lineEditPos = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 2));
-        if (lineEditPos) {
-            preset.stagePosition = lineEditPos->text().toFloat();
+        // 读取直线台位置（第1列）
+        QTableWidgetItem *itemPos = m_powerPresetTableStage->item(row, 1);
+        if (itemPos) {
+            preset.stagePosition = itemPos->text().toFloat();
         }
         
-        // 读取种子源泵电流（第3列）
-        QLineEdit *lineEditSeed = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 3));
-        if (lineEditSeed) {
-            preset.seedPumpCurrent = lineEditSeed->text().toFloat();
+        // 读取种子源泵电流（第2列）
+        QTableWidgetItem *itemSeed = m_powerPresetTableStage->item(row, 2);
+        if (itemSeed) {
+            preset.seedPumpCurrent = itemSeed->text().toFloat();
         }
         
-        // 读取FOPO泵电流（第4列）
-        QLineEdit *lineEditFOPO = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 4));
-        if (lineEditFOPO) {
-            preset.fopoPumpCurrent = lineEditFOPO->text().toFloat();
+        // 读取FOPO泵电流（第3列）
+        QTableWidgetItem *itemFOPO = m_powerPresetTableStage->item(row, 3);
+        if (itemFOPO) {
+            preset.fopoPumpCurrent = itemFOPO->text().toFloat();
         }
         
-        // 读取Stokes泵电流（第5列）
-        QLineEdit *lineEditStokes = qobject_cast<QLineEdit*>(m_powerPresetTableStage->cellWidget(row, 5));
-        if (lineEditStokes) {
-            preset.stokesPumpCurrent = lineEditStokes->text().toFloat();
+        // 读取Stokes泵电流（第4列）
+        QTableWidgetItem *itemStokes = m_powerPresetTableStage->item(row, 4);
+        if (itemStokes) {
+            preset.stokesPumpCurrent = itemStokes->text().toFloat();
         }
         
         presets.append(preset);
@@ -3012,34 +3556,21 @@ void Integration::addDelayPresetRow(PresetPageType pageType)
     int row = table->rowCount();
     table->insertRow(row);
     
-    // 第0列：序号（只读）
-    QTableWidgetItem *numberItem = new QTableWidgetItem(QString::number(row + 1));
-    numberItem->setTextAlignment(Qt::AlignCenter);
-    numberItem->setFlags(numberItem->flags() & ~Qt::ItemIsEditable);  // 设置为只读
-    table->setItem(row, 0, numberItem);
-    
-    // 第1-2列：添加输入框（限制为三位小数的浮点数）
-    for (int col = 1; col <= 2; col++) {
-        QLineEdit *lineEdit = new QLineEdit();
-        lineEdit->setText("0.000");
-        lineEdit->setAlignment(Qt::AlignCenter);
+    // 添加所有列的item
+    for (int col = 0; col < 3; col++) {
+        QTableWidgetItem *item = new QTableWidgetItem();
+        item->setTextAlignment(Qt::AlignCenter);  // 居中对齐
         
-        // 设置验证器：允许浮点数，最多三位小数
-        QDoubleValidator *validator = new QDoubleValidator(lineEdit);
-        validator->setDecimals(3);  // 最多三位小数
-        validator->setNotation(QDoubleValidator::StandardNotation);
-        lineEdit->setValidator(validator);
+        if (col == 0) {
+            // 序号列：自动编号且不可编辑
+            item->setText(QString::number(row + 1));
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        } else {
+            // 数据列：默认为空,可编辑
+            item->setText("");
+        }
         
-        // 当编辑完成时，自动格式化为三位小数
-        connect(lineEdit, &QLineEdit::editingFinished, [lineEdit]() {
-            bool ok;
-            double value = lineEdit->text().toDouble(&ok);
-            if (ok) {
-                lineEdit->setText(QString::number(value, 'f', 3));
-            }
-        });
-        
-        table->setCellWidget(row, col, lineEdit);
+        table->setItem(row, col, item);
     }
     
     QString pageName = (pageType == PresetPageType::GalvoPage) ? "振镜页" : "位移台页";
@@ -3066,26 +3597,24 @@ QList<DelayPreset> Integration::loadDelayPresetsFromTable(PresetPageType pageTyp
     for (int row = 0; row < table->rowCount(); row++) {
         DelayPreset preset;
         
-        // 第0列是序号，跳过
-        
         if (pageType == PresetPageType::GalvoPage) {
-            // 振镜页：读取振镜角度（第1列）
-            QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
-            if (lineEditAngle) {
-                preset.galvoAngle = lineEditAngle->text().toFloat();
+            // 振镜页：读取振镜角度（第0列）
+            QTableWidgetItem *itemAngle = table->item(row, 0);
+            if (itemAngle) {
+                preset.galvoAngle = itemAngle->text().toFloat();
             }
         } else {
-            // 位移台页：读取旋转台角度（第1列）
-            QLineEdit *lineEditAngle = qobject_cast<QLineEdit*>(table->cellWidget(row, 1));
-            if (lineEditAngle) {
-                preset.stagePosition = lineEditAngle->text().toFloat();
+            // 位移台页：读取旋转台角度（第0列）
+            QTableWidgetItem *itemAngle = table->item(row, 0);
+            if (itemAngle) {
+                preset.stagePosition = itemAngle->text().toFloat();
             }
         }
         
-        // 读取延迟时间（第2列）
-        QLineEdit *lineEditDelay = qobject_cast<QLineEdit*>(table->cellWidget(row, 2));
-        if (lineEditDelay) {
-            preset.delayTime = lineEditDelay->text().toFloat();
+        // 读取延迟时间（第1列）
+        QTableWidgetItem *itemDelay = table->item(row, 1);
+        if (itemDelay) {
+            preset.delayTime = itemDelay->text().toFloat();
         }
         
         presets.append(preset);
@@ -3307,4 +3836,110 @@ void Integration::updateStageConfirmButtonVisibility()
     } else {
         qDebug() << "位移台页：隐藏底部控制按钮";
     }
+}
+
+void Integration::showChartMaximizedStokes()
+{
+    // 如果最大化窗口已存在，直接显示
+    if (m_chartMaximizedDialogStokes) {
+        m_chartMaximizedDialogStokes->show();
+        m_chartMaximizedDialogStokes->raise();
+        m_chartMaximizedDialogStokes->activateWindow();
+        return;
+    }
+    
+    // 创建最大化窗口
+    m_chartMaximizedDialogStokes = new QDialog(this);
+    m_chartMaximizedDialogStokes->setWindowTitle("Stokes路光谱数据 - 最大化视图");
+    m_chartMaximizedDialogStokes->setWindowFlags(Qt::Window | Qt::WindowMaximizeButtonHint | Qt::WindowCloseButtonHint);
+    m_chartMaximizedDialogStokes->resize(1200, 800);
+    
+    // 创建新的图表和数据系列（复制当前数据）
+    QChart *maximizedChart = new QChart();
+    maximizedChart->setTitle("Stokes路光谱数据");
+    maximizedChart->setAnimationOptions(QChart::NoAnimation);
+    
+    // 创建新的数据系列并复制数据
+    QLineSeries *maximizedSeries = new QLineSeries();
+    maximizedSeries->setName("光谱强度");
+    maximizedSeries->setUseOpenGL(true);
+    
+    // 如果有数据则复制，否则创建空系列
+    if (m_seriesStokes && m_seriesStokes->count() > 0) {
+        maximizedSeries->replace(m_seriesStokes->points());
+    }
+    
+    maximizedChart->addSeries(maximizedSeries);
+    
+    // 创建坐标轴（复制当前坐标轴设置）
+    QValueAxis *axisX = new QValueAxis();
+    axisX->setTitleText("波长 [nm]");
+    if (m_axisXStokes) {
+        axisX->setRange(m_axisXStokes->min(), m_axisXStokes->max());
+    } else {
+        axisX->setRange(200, 1100);
+    }
+    axisX->setGridLineVisible(true);
+    axisX->setMinorGridLineVisible(true);
+    axisX->setTickCount(10);
+    axisX->setMinorTickCount(4);
+    maximizedChart->addAxis(axisX, Qt::AlignBottom);
+    maximizedSeries->attachAxis(axisX);
+    
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setTitleText("强度 [counts]");
+    if (m_axisYStokes) {
+        axisY->setRange(m_axisYStokes->min(), m_axisYStokes->max());
+    } else {
+        axisY->setRange(0, 65535);
+    }
+    axisY->setGridLineVisible(true);
+    axisY->setMinorGridLineVisible(true);
+    axisY->setTickCount(10);
+    axisY->setMinorTickCount(4);
+    maximizedChart->addAxis(axisY, Qt::AlignLeft);
+    maximizedSeries->attachAxis(axisY);
+    
+    // 显示图例
+    maximizedChart->legend()->setVisible(true);
+    maximizedChart->legend()->setAlignment(Qt::AlignTop);
+    
+    // 创建图表视图
+    QChartView *maximizedChartView = new QChartView(maximizedChart, m_chartMaximizedDialogStokes);
+    maximizedChartView->setRenderHint(QPainter::Antialiasing);
+    maximizedChartView->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing, true);
+    maximizedChartView->setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+    
+    // 设置布局
+    QVBoxLayout *layout = new QVBoxLayout(m_chartMaximizedDialogStokes);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(maximizedChartView);
+    m_chartMaximizedDialogStokes->setLayout(layout);
+    
+    // 当窗口关闭时清理资源
+    connect(m_chartMaximizedDialogStokes, &QDialog::finished, this, [this]() {
+        // 删除最大化窗口（图表会自动随窗口删除）
+        if (m_chartMaximizedDialogStokes) {
+            m_chartMaximizedDialogStokes->deleteLater();
+            m_chartMaximizedDialogStokes = nullptr;
+        }
+        
+        qDebug() << "Stokes路图表最大化窗口已关闭";
+    });
+    
+    // 显示最大化窗口
+    m_chartMaximizedDialogStokes->showMaximized();
+    
+    qDebug() << "Stokes路图表已最大化显示";
+}
+
+SerialConfig Integration::getSpectrometerStokesSerialConfig()
+{
+    SerialConfig config;
+    config.portName = ui->comboBoxSpectrometerStokesPort->currentText();
+    config.baudRate = ui->comboBoxSpectrometerStokesBaudRate->currentData().toInt();
+    config.dataBits = QSerialPort::Data8;
+    config.stopBits = QSerialPort::OneStop;
+    config.parity = QSerialPort::NoParity;
+    return config;
 }
