@@ -1,0 +1,3330 @@
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Elliptec Thorlabs  
+ELLx Resonant Piezo Motor  
+Communication Protocol 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Date: October-2025 
+ 
+ 
+Page 1 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+Contents 
+Introduction ............................................................................................................................... 4 
+Control Messages ...................................................................................................................... 9 
+“in”_DEV .................................................................................... 10 
+HOSTREQ_INFORMATION 
+_DEVGET_INFORMATION 
+“IN”............................................................................................. 10 
+“gs” ...................................................................................................... 11 
+_HOSTREQ_STATUS 
+“GS” ....................................................................................................... 11 
+_DEVGET_STATUS 
+“us” .................................................................................... 12 
+_HOSTREQ_SAVE_USER_DATA 
+_HOSTREQ_CHANGEADDRESS 
+“ca” ..................................................................................... 12 
+“i1” ............................................................................................ 13 
+_HOSTREQ_MOTOR1INFO 
+“I1” .............................................................................................. 13 
+_DEVGET_MOTOR1INFO 
+“f1” ........................................................................................... 15 
+_HOSTSET_FWP_MOTOR1 
+_HOSTSET_BWP_MOTOR1 
+“b1” .......................................................................................... 16 
+“s1” ............................................................................ 17 
+_HOSTREQ_SEARCHFREQ_MOTOR1 
+“c1” .............................................................. 18 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR1 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR1 
+“C1” ......................................................... 19 
+“is” ............................................................................................. 20 
+_HOST_ISOLATEMINUTES 
+“i2” ............................................................................................ 21 
+_HOSTREQ_MOTOR2INFO 
+“I2” .............................................................................................. 21 
+_DEVGET_MOTOR2INFO 
+_HOSTSET_FWP_MOTOR2 
+“f2” ........................................................................................... 23 
+“b2” .......................................................................................... 24 
+_HOSTSET_BWP_MOTOR2 
+“s2” ............................................................................ 25 
+_HOSTREQ_SEARCHFREQ_MOTOR2 
+“c2” .............................................................. 26 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR2 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR2 
+“C2” ......................................................... 27 
+“ho” ....................................................................................................... 28 
+_HOSTREQ_HOME 
+“GS or PO” .......................................................................................... 28 
+_DEVGET_POSITION 
+“ah” ........................................................................................... 29 
+_HOSTSET_AUTOHOMING 
+_HOSTREQ_MOVEABSOLUTE 
+“ma” ..................................................................................... 30 
+“GS or PO” .......................................................................................... 30 
+_DEVGET_POSITION 
+_HOSTREQ_MOVERELATIVE 
+“mr” ....................................................................................... 31 
+“GS or PO” .......................................................................................... 31 
+_DEVGET_POSITION 
+“go” ........................................................................................... 32 
+_HOSTREQ_HOMEOFFSET 
+“HO” ............................................................................................. 32 
+_DEVGET_HOMEOFFSET 
+“so” ............................................................................................ 32 
+_HOSTSET_HOMEOFFSET 
+_HOSTREQ_JOGSTEPSIZE 
+“gj” .............................................................................................. 34 
+“GJ” ................................................................................................ 34 
+_DEVGET_JOGSTEPSIZE 
+_HOSTSET_JOGSTEPSIZE 
+“sj” ............................................................................................... 34 
+“fw” ....................................................................................................... 36 
+_HOST_FORWARD 
+_HOST_BACKWARD 
+“bw” .................................................................................................... 36 
+“sk” ..................................................................................... 37 
+_HOSTREQ_SKIP_FREQUENCY 
+_HOST_MOTIONSTOP 
+“st” ................................................................................................... 38 
+“gp” .................................................................................................. 39 
+_HOST_GETPOSITION 
+“PO” .................................................................................................... 39 
+_DEV_GETPOSITION 
+“gv” .................................................................................................. 40 
+_HOSTREQ_VELOCITY 
+“GV” .................................................................................................... 40 
+_DEVGET_VELOCITY 
+_HOSTSET_VELOCITY 
+“sv” .................................................................................................... 40 
+“BS” .......................................................................................... 42 
+_DEVGET_BUTTONSTATUS 
+_DEVGET_BUTTONPOSITION 
+“BO” ...................................................................................... 42 
+ 
+ 
+Page 2 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“ga” .............................................................................................. 44 
+_HOST_GROUPADDRESS 
+“om” ....................................................................................... 45 
+_HOST_OPTIMIZE_MOTORS 
+“GS” ............................................................................................................. 45 
+_DEV_STATUS 
+“cm” ....................................................................................... 46 
+_HOST_CLEAN_MECHANICS 
+“GS” ............................................................................................................. 46 
+_DEV_STATUS 
+“st” ................................................................................................... 47 
+_HOST_MOTIONSTOP 
+_DEV_STATUS 
+“GS” ............................................................................................................. 47 
+ERROR MESSAGES ................................................................................................................... 48 
+Messages Applicable to Multi-Position Slider Devices ............................................................ 49 
+Messages Applicable to Rotation Devices ............................................................................... 50 
+Messages Applicable to Linear Devices ................................................................................... 51 
+Messages Applicable to Iris Devices ........................................................................................ 52 
+ 
+ 
+Page 3 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Introduction 
+ 
+1.  Purpose and Scope 
+This  document  describes  the  low-level  communications  protocol  and  commands  used 
+between  the  host  controller  and  OEM  modules  within  the  ELLx  family.  The  information 
+contained in this document is intended to help third party system developers to write their 
+own  applications  to  interface  to  the  Elliptec  Thorlabs  range  of  OEM  modules  without  the 
+constraints  of  using  a  particular  operating  system  or  hardware  platform.  The  commands 
+described here  are those which are necessary to control movement; there  is an additional 
+set  of  commands,  used  for  calibration  or  test,  which  will  not  be  detailed  as  these  are  not 
+required for the external system developer. 
+ 
+2.  Electrical interface 
+The ELLx family of OEM module provides a multidrop TTL RS-232 interface (point to point 
+TTL RS232, and RS485 are available on request) to communicate with the host PC. 
+TTL digital lines are also available (INM for in motion state, JOG, FWD and BWD for motion). 
+TTL voltage digital levels are 0V or 3.3V, exceeding these values may damage modules. 
+  
+2.1  USB Interface adapter 
+HOSTREQ_HOME “ho 
+The USB interface adapter uses a Future Technology Devices International (FTDI), type 
+FT232BM USB peripheral chip to communicate with the host PC. This is a USB2.0 compliant 
+USB1.1 device. This USB interfacing chip provides a serial port interface to the embedded 
+system and USB interface to the host control PC.  
+FTDI supply device drivers and interfacing libraries (for Windows, Linux and other platforms) 
+used to access the USB chip. Before any PC USB communication can be established with an 
+ELLx module, the client program is required to set up the necessary FTDI chip serial port 
+settings used to communicate to the APT controller embedded system. 
+Here an example for Windows on how to establish a communication via the USB remote 
+control adapter (169892 Elliptec Demo Board). 
+  
+// Set baud rate to 9600. 
+ftStatus = FT_SetBaudRate(m_hFTDevice, (ULONG)uBaudRate); 
+  
+// 8 data bits, 1 stop bit, no parity 
+ftStatus = FT_SetDataCharacteristics(m_hFTDevice, FT_BITS_8, FT_STOP_BITS_1, 
+FT_PARITY_NONE); 
+  
+// Pre purge dwell 50ms. 
+Sleep(uPrePurgeDwell); 
+  
+// Purge the device. 
+ftStatus = FT_Purge(m_hFTDevice, FT_PURGE_RX | FT_PURGE_TX); 
+  
+// Post purge dwell 50ms. 
+Sleep(uPostPurgeDwell); 
+  
+// Reset device. 
+ftStatus = FT_ResetDevice(m_hFTDevice); 
+  
+// No flow control  
+ftStatus = FT_SetFlowControl(m_hFTDevice, FT_FLOW_NONE, 0, 0); 
+ 
+ 
+Page 4 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+2.2  USB Device Enumeration 
+ 
+Enumeration is made via RS232 interface, USB adapter acts just as electrical adapter. 
+ 
+ 
+2.3  TTL RS-232 Interface 
+ 
+The multidrop TTL RS-232 interface uses the 8-way Picoflex male SMD connector on PCB or 
+the rear panel, marked ‘INTERCONNECT’.  
+Communications parameters are fixed at: 
+•  9600 bits/sec 
+•  8 data bits, 1 stop bit 
+•  No parity 
+•  No handshake 
+ 
+The multidrop bus is based on open drain signals so 10k ohm 1/8 watt pull-up resistor to 
+3.3V should be used to ensure proper integrity. Signal must be in 0-3.3V volt range only. 
+ 
+3.  Overview of the Communications Protocol 
+ 
+The communications protocol used in the ELLx Elliptec Thorlabs module is based on the 
+message structure that always starts with a fixed length, 3-byte message header which, in 
+some cases, is followed by a variable length data packet. For simple commands, the 3-byte 
+message header is sufficient to convey the entire command.  
+Some commands require parameters so 3-byte packet must be followed by the data bytes. 
+The number of data bytes depends on command and length is now part of the packet is 
+implicit (see command detail to see length). 
+ 
+Note that in the section below describing the various byte sequences, the C-type of notation 
+will be used for hexadecimal values (e.g., 0x55 means 55 hexadecimal) and logical operators 
+(e.g., | means logic bitwise OR). Values that are longer than a byte follow the Motorola big-
+endian format. 
+ 
+Data packets coming from modules are terminated with carriage return CR (0xD) first and 
+then line feed LS (0xA). Each module has a 2 second time out such that the discard packet is 
+discarded if time between each byte sent is higher longer than 2 seconds. Alternatively, 
+carriage return CR can be used to clear receiving state machine and exit from a time out 
+error or cancel a command not completed.  
+Error must be cleared reading module status see “gs”. 
+ 
+ 
+Page 5 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+4.  Description of the message header 
+ 
+The 3 bytes in the message header are shown below: 
+ 
+Byte: 
+Meaning 
+byte 1 
+ADDRESS 
+byte 2 
+COMMAND ID 
+byte 3 
+byte 4 (optional) .. byte N 
+HEX ASCII DATA  
+   
+ 
+The meaning of some of the fields depends on whether or not the message is followed by a 
+data packet.  
+ 
+ADDRESS:   
+COMMAND: 
+HEX ASCII DATA: 
+Is the address (0-F range) default value is 0”  
+two bytes mnemonic command i.e., “re” for reboot. 
+Data are in ASCII format in hexadecimal notation. 
+i.e., for a char parameter “0A” ascii value 0x30 0x61 mean decimal 
+value 10. 
+ 
+ 
+ 
+The type of messages used in the communications exchange between the host and the sub-
+modules can be divided into 2 general categories: 
+ 
+(a)  Host issues a command, “lower case” mnemonic commands “re”. 
+ 
+(b)  Module reply or send state spontaneously “upper case” mnemonic command “GS”. 
+ 
+ 
+ 
+Page 6 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+5.  Format Specifiers 
+ 
+encoding 
+format 
+word 
+short 
+dword 
+long 
+Unsigned 16-bit integer (2 bytes) in the Motorola (big-endian) format 
+for example, decimal 12345 (3039H) is encoded as the byte sequence 30,39 
+Signed 16-bit integer (2 bytes) in 2’s compliment format  
+for example, decimal -1 is encoded as the byte sequence FF, FF 
+Unsigned 32-bit integer (4 bytes) in the Motorola (big-endian) format 
+for example, decimal 123456789 (75BCD15H) is encoded as the byte 
+sequence 07,5B, CD,15 
+Signed 32-bit integer (4 bytes) in 2’s compliment format 
+for example, decimal -1 is encoded as the byte sequence FF, FF 
+4 bytes in the Motorola (big-endian) format 
+for example, decimal -123456789 (FFFFFFFFF8A432EBH) is encoded as the 
+byte sequence F8, A4, 32, EB 
+1 byte (2 digits) 
+string of N characters 
+ Single Precision Floating Point Format 
+char 
+char[N] 
+Most of data sent via the following command packet are unsigned types apart from any 
+“position” related commands (home offset, move relative etc.) 
+ 
+6. 
+Single-precision  floating-point  format  is  a  computer  number  format  that  occupies  4  bytes 
+(32  bits)  in  computer  memory  and  represents  a  wide  dynamic  range  of  values  by  using  a 
+floating point. 
+Where  message  parameters  use  floating  point  variables,  the  system  uses  the  IEEE  754 
+standard.  
+ 
+ 
+ 
+Page 7 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+7.  Conversion between position, velocity and acceleration values in standard physical 
+units and their equivalent APT parameters. 
+To convert  between the  position  and encoder counters  in the stage being driven,  and real 
+world units, (e.g. mm) the system uses certain conversion (scaling) factors. These conversion 
+factors differ depending on the stage being driven and the controller being used. 
+ 
+The  information  packet  contains  all  the  scaling  factor  information:  stage  travel  in  mm  or 
+degrees (depending on ELL module type) and encoder pulses per measurement unit. 
+ 
+Model 
+Travel 
+Hardware ID Range 
+Pulses/Rev 
+Loop Type 
+Motors 
+0 
+0 
+0 
+0 
+Closed: 
+indexed 
+Closed: 
+indexed 
+Closed: 
+indexed 
+Closed: 
+indexed 
+262144 
+(40000H) 
+1024 
+262144 
+(40000H) 
+1024 
+Closed: linear 
+Closed: linear 
+1024 imp/mm 
+Closed: linear 
+2048 imp/mm 
+Closed: linear 
+1024 imp/mm 
+1000 
+Closed: linear 
+1000 
+Closed: linear 
+65536 
+65536 
+Closed: linear 
+182 deg/pulse 
+Closed: linear 
+182 deg/pulse 
+1 
+2 
+2 
+2 
+2 
+2 
+2 
+2 
+2 
+2 
+2 
+2 
+ELL6 MULTI-
+POSITION SLIDER 
+ELL6B MULTI-
+POSITION SLIDER 
+ELL9 MULTI-
+POSITION SLIDER 
+ELL12 MULTI-
+POSITION SLIDER 
+ELL14 ROTARY 
+STAGE 
+31 mm 
+One Motor 1-1 
+31 mm 
+Two Motors 2-255 
+31 mm 
+19 mm 
+360° 
+1-255 
+1-255 
+1-255 
+ELL17 LINEAR STAGE 
+28 mm 
+ELL18 ROTARY 
+STAGE 
+360° 
+ELL20 LINEAR STAGE 
+60 mm 
+ELL15 MOTORIZED 
+IRIS 
+ELL15Z MOTORIZED 
+IRIS 
+ELL16 ROTARY 
+STAGE 
+ELL21 ROTARY 
+STAGE 
+Ø10.5 
+mm 
+Ø11.5 
+mm 
+360° 
+360° 
+Metric 1-128              
+Imperial 129-255 
+Metric 1-128              
+Imperial 129-255 
+Metric 1-128              
+Imperial 129-255 
+1-32 
+33-64 
+1-255 
+Metric 1-128 
+Imperial 129 -255 
+ 
+ 
+ 
+Note: Equivalent HEX values for Hardware device IDs: 
+Metric 0x01 to 0x80 
+Imperial 0x81 to 0xFF 
+ 
+ 
+ 
+Page 8 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Control Messages 
+ 
+Introduction 
+ 
+The messages described here are listed in random manner, and may be system control 
+messages, generic messages which apply to all module types, or messages which apply only 
+to specific modules. Unless stated otherwise, a message applies to all modules. 
+ 
+Please also see the list of controller specific commands for details on applicability to a 
+specific module type. 
+ 
+ 
+ 
+ 
+Page 9 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“in”_DEV 
+“IN” 
+ 
+HOSTREQ_INFORMATION 
+_DEVGET_INFORMATION 
+ 
+ 
+ 
+Function: 
+Instruct hardware unit to identify itself giving information about 
+model, serial number, firmware and hardware releases, travel, 
+encoder pulses per measurement unit. 
+ 
+USER REQUEST  
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+n 
+i 
+A 
+ 
+Example: 
+ 
+Identify multi-position slider at default address “0” 
+TX “0in” 
+ 
+ 
+DEVICE REPLY 
+Command structure (33 bytes): 
+ 
+0 
+A 
+1 
+2 
+3-4 
+5-12 
+13-16 
+17-18 
+header 
+“i” 
+“n” 
+ELL 
+SN 
+YEAR 
+FW rel 
+19-20 
+Data 
+HW rel. 
+21-24 
+25-32 
+TRAVEL mm/deg 
+PULSES/M.U. 
+ 
+Example: 
+ 
+Identify multi-position slider at default address “0” 
+RX “0, IN, 06,12345678,2015,01,81,001F,00000001” 
+ 
+ 
+ 
+ 
+ 
+ 
+Details: 
+0 
+IN 
+06 
+12345678  
+2015  
+01  
+81  
+ 
+ 
+ 
+ 
+001F  
+00000001  
+ 
+Default Address 
+Get Information 
+ELL6 bi-positional slider 
+Serial Number 
+Year of manufacturing 
+Firmware release, i.e., 0.1 
+The most significant bit signifies thread type. 
+(1 is imperial, 0 is metric),  
+the remaining 7 bits signify the Hardware release,  
+e.g.  81 (1000,0001) means imperial stage, hardware 
+release 1 
+31mm travel 
+1 pulse per position (bi-positional only) 
+ 
+Page 10 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“gs” 
+“GS” 
+Instruct hardware unit to get module status or error value. 
+Once read the error value is cleared. 
+ 
+_HOSTREQ_STATUS 
+_DEVGET_STATUS 
+ 
+Function: 
+ 
+ 
+ 
+USER REQUEST status 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+s 
+g 
+A 
+ 
+Example: 
+ 
+Get status of multi-position slider at its default address “0” 
+TX “0gs” 
+ 
+DEVICE REPLY 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+A 
+Data 
+Error/Status 
+ 
+Example: 
+Multi-position slider status value when multi-position slider is at its 
+default address “0” 
+Status/Error 
+code value 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14-255 
+ 
+ 
+ 
+RX “0GS00”  
+Means the multi-position slider is OK  
+ 
+Meaning 
+OK, no error 
+Communication time out 
+Mechanical time out 
+Command error or not supported 
+Value out of range 
+Module isolated 
+Module out of isolation 
+Initializing error 
+Thermal error 
+Busy 
+Sensor Error (May appear during self-test. If code persists there is an error) 
+Motor Error (May appear during self-test. If code persists there is an error) 
+Out of Range (e.g., stage has been instructed to move beyond its travel 
+range). 
+Over Current error 
+Reserved 
+Status/Error table 
+ 
+Page 11 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“us” 
+  
+_HOSTREQ_SAVE_USER_DATA 
+ 
+Function: 
+Instruct hardware unit to save motor parameters (such as forward 
+or backward frequencies) and other reserved or user parameters. 
+ 
+USER REQUEST save data 
+Command structure (3 bytes): 
+ 
+ 
+0 
+1 
+2 
+header only 
+s 
+u 
+A 
+ 
+Example: 
+ 
+Save motor and user parameter of multi-position slider at default 
+address “0” 
+TX “0us” 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted. 
+ 
+ 
+_HOSTREQ_CHANGEADDRESS 
+ 
+Function: 
+“ca” 
+Instruct hardware unit to change to the address of another device. 
+The address is entered in the range 0-F. The default value is a 0. 
+ 
+USER REQUEST Change Address 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+a 
+c 
+A 
+3 
+Data 
+New 
+Address 
+ 
+Example: 
+ 
+ 
+Change a motor at address 0 to address “A” 
+TX “0 ca A” 
+ 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet from new address when command is accepted.
+ 
+ 
+Page 12 of 52 
+Elliptec Thorlabs  
+ 
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“i1” 
+“I1” 
+_HOSTREQ_MOTOR1INFO 
+_DEVGET_MOTOR1INFO 
+ 
+Function: 
+Instruct hardware unit to obtain motor parameters (such as forward 
+or backward frequencies) and other reserved or user parameters. 
+ 
+USER REQUEST Motor Data 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+1 
+i 
+A 
+ 
+Example: 
+ 
+Get motor and user parameter data of multi-position slider at 
+default address “0” 
+TX “0i1” 
+ 
+ 
+DEVICE REPLY 
+Command structure (23 bytes): 
+ 
+ 
+0 
+A 
+1 
+header 
+I 
+2 
+1 
+ 
+3 
+4 
+5 
+6 
+7 
+Data 
+8 
+9 
+10 
+11 
+12 
+Reserved  Motor 
+Current 
+Reserved 
+13 
+14 
+15 
+16 
+17 
+18 
+19 
+20 
+21 
+22 
+23 
+24 
+Reserved 
+Forward Period (FwP) 
+Backward Period (BwP) 
+Data 
+ 
+Data Structure 
+ 
+field 
+Reserved 
+Motor 
+Current 
+Reserved 
+Reserved 
+Forward Period 
+Backward Period 
+description 
+format 
+ 
+The state of the motor (1 = ON, 0 = OFF) 
+1866 points is 1 amp 
+ 
+ 
+Forward period value  
+Backward period value 
+ 
+char 
+word 
+ 
+ 
+word 
+word 
+ 
+ 
+Where: 
+ 
+Period=14740000/frequency for backward and forward motor movements. 
+Current is represented in raw ADC units. To convert to amperes: Current (A) = ADC raw 
+value/1866 (where 1866 ADC points = 1 Amp). 
+ 
+ 
+ 
+ 
+Page 13 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+ 
+ 
+Example: 
+ 
+ 
+ 
+Get motor 1 info at default address “0” 
+RX “0I1100428FFFFFFFF00BD008B” 
+Details: 
+0 
+I1 
+1 
+0  
+0428 
+FFFF 
+FFFF 
+00BD 
+008B  backward period (higher frequency, 106kHz) 
+default address of multi-position slider 
+Info packet for motor 1 
+Loop is ON 
+Motor 1 is not working 
+Last current measurement value was 0x0428 (0.57A) 
+ramp up (0xFFFF not defined) 
+ramp down (0xFFFF not defined)  
+forward period (lower frequency, 78kHz) 
+ 
+ 
+Note: If the frequency search is not skipped, motor energization is confirmed during startup. 
+As a result, the updated motor status is reflected on I1 and I2. 
+However,  if  the  frequency  search  is  skipped,  the  motors  will  not  be  energized  at  the 
+beginning of the startup. Consequently, the initial motor status will appear as off. 
+In  such  cases,  especially  when  verifying  motor  connections  or  diagnosing  potential 
+malfunctions,  it  is  essential  to  manually  update  the  motor  status.  To  do  so,  you  must 
+energise the motor by sending "c1" and "c2" commands. This action will trigger the system 
+to provide the correct, updated motor status, after you attempt to "read settings" for each 
+motor, or alternatively send the "i1" or "i2" commands. 
+ 
+ 
+Page 14 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“f1” 
+_HOSTSET_FWP_MOTOR1 
+ 
+Function: 
+Due to load, build tolerances and other mechanical variances, the 
+default resonating frequency of a particular motor may not be that 
+which delivers best performance. This message allows the operating 
+frequencies for forward movement to be adjusted. 
+ 
+THIS MESSAGE IS NOT APPLICABLE TO ELL16 AND ELL21. 
+ 
+ 
+USER SET fwp for motor 1 
+Command structure (7 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+Data 
+Forward Period (FwP) 
+header only 
+1 
+f 
+A 
+ 
+Data Structure 
+ 
+field 
+description 
+Forward Period 
+The forward period value 
+format 
+word 
+ 
+Where: Period=14740000/frequency  
+ 
+ 
+Example: 
+Set motor 1 forward frequency of a multi-position slider at its default 
+address “0” to 78kHz 
+ 
+TX “0f1804E” 
+ 
+ 
+ 
+ 
+Notes: 
+The most significant bit of the period (Bit 3) must be set to ‘8’, e.g., 0f1804E above. 
+User must save new working parameters using “us” command. 
+To restore the forward frequency factory setting value, send FFF, i.e., 0f18FFF. 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted. 
+ 
+ 
+Page 15 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“b1” 
+ 
+_HOSTSET_BWP_MOTOR1 
+ 
+Function: 
+Due to load, build tolerances and other mechanical variances, the 
+default resonating frequency of a particular motor may not be that 
+which delivers best performance. This message allows the operating 
+frequencies for backwards movement to be adjusted. 
+ 
+THIS MESSAGE IS NOT APPLICABLE TO ELL16 AND ELL21. 
+ 
+ 
+USER SET BwP for motor 1 
+Command structure (7 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+Data 
+Backward Period (BwP) 
+header only 
+1 
+b 
+A 
+ 
+Data Structure 
+ 
+field 
+description 
+Backward Period 
+The backward period value 
+format 
+word 
+ 
+Where: Period=14740000/frequency  
+ 
+ 
+Example: 
+Set motor 1 backward frequency of a multi-position slider at its default 
+address “0” to 109kHz 
+ 
+TX “0f1806D” 
+ 
+Notes: 
+The most significant bit of the period (Bit 3) must be set to ‘8’, e.g., 0f1806D above. 
+User must save new working parameters using “us” command. 
+To restore the backward frequency factory setting value, send FFF, i.e., 0b18FFF. 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted. 
+ 
+ 
+ 
+ 
+Page 16 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_SEARCHFREQ_MOTOR1 
+ 
+Function: 
+“s1” 
+Due to load, build tolerances and other mechanical variances, the 
+default resonating frequency of a particular motor may not be that 
+which delivers best performance. This message requests a frequency 
+search be performed to optimize the operating frequencies for 
+backward and forward movement. 
+ 
+For ELL14, ELL16, ELL17, ELL18 and ELL20 and ELL21 devices 
+After calling this message, the device can be “fine-tuned” further by 
+calling the OPTIMIZE_MOTORS message. 
+ 
+USER REQUEST search frequency motor 1 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+1 
+s 
+A 
+ 
+Example: 
+ 
+Search for best forward/backward frequencies for motor 1 at 
+address “A” 
+TX “As1” 
+ 
+ 
+Note: 
+User must save new working parameters using “us” command. 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted and completed. 
+Moving part may move using this command. 
+ 
+ 
+Page 17 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Instruct hardware unit to scan the current curve for motor 1. 
+“c1” 
+ 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR1 
+ 
+Function: 
+ 
+USER REQUEST scancurrentcurve motor 1 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+1 
+c 
+A 
+ 
+Example: 
+ 
+ 
+Scan the current curve for motor 1 at address “A” 
+TX “Ac1” 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted and completed. 
+Moving part may move using this command. 
+ 
+ 
+ 
+Page 18 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR1 
+ 
+Function: 
+“C1” 
+Once the ScanCurrentCurve request has been sent, this message is 
+used to obtain the current curve measurement data from the 
+hardware unit. 
+ 
+DEVICE REPLY 
+Command structure (522 bytes): 
+ 
+0 
+A 
+1 
+header 
+C 
+2 
+1 
+3-4 
+5-8 
+9-521 
+ 
+Period  Current 
+ 
+Data 
+87 points from 70 kHz up 
+ 
+ 
+ 
+Each  of  the  87  samples  in  the  data  section  consists  of  a  Period  (2  bytes)  followed  by  a 
+Current (4 bytes) value, repeated sequentially.  
+Data Interpretation: 
+Period: 2 bytes, little-endian 
+Interpreted as: 
+Frequency  (Hz)  =  14740000  /  Period.  Note  that  the  values  of  period  represent  forward  and 
+backward motor motion. 
+Current: 4 bytes, little-endian 
+Represents current in raw ADC units. To convert to amperes: 
+Current (A)=Raw Value / 1866 
+(Where 1866 ADC points = 1 Amp) 
+A full current scan includes 87 measurements starting at 70 kHz and ending at approximately 
+120 kHz. 
+The full operation takes up to 12 seconds to complete. 
+ 
+ 
+Page 19 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“is” 
+_HOST_ISOLATEMINUTES 
+ 
+Function: 
+Isolate the device, such that it will not reply for the specified time 
+period. The isolation time is specified in number of minutes. 
+ 
+ 
+USER REQUEST home 
+Command structure (4 bytes): 
+ 
+0 
+1 
+2 
+3 
+ 
+header only 
+A 
+i 
+s 
+Data 
+Minutes 
+ 
+Example: 
+ 
+Isolate the device at address “0” for 60 minutes. 
+TX “0is3C” (0x3C = 60 minutes) 
+ 
+ 
+ 
+ 
+ 
+Page 20 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_MOTOR2INFO 
+_DEVGET_MOTOR2INFO 
+ 
+THIS MESSAGE APPLIES ONLY TO DEVICES WITH 2 MOTORS. IT IS NOT APPLICABLE TO 
+SINGLE MOTOR DEVICES SUCH AS THE ELL6 BI-POSITIONAL SLIDER. 
+ 
+Function: 
+“i2” 
+“I2” 
+Instruct hardware unit to obtain motor parameters (such as forward 
+or backward frequencies) and other reserved or user parameters. 
+ 
+USER REQUEST Motor Data 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+2 
+i 
+A 
+ 
+Example: 
+ 
+Get motor and user parameter data of stage at default address “0” 
+TX “0i2” 
+ 
+ 
+DEVICE REPLY 
+Command structure (23 bytes): 
+ 
+ 
+0 
+A 
+1 
+header 
+I 
+2 
+2 
+ 
+3 
+4 
+5 
+6 
+7 
+Data 
+8 
+9 
+10 
+11 
+12 
+Reserved  Motor 
+Current 
+Reserved 
+13 
+14 
+15 
+16 
+17 
+18 
+19 
+20 
+21 
+22 
+23 
+24 
+Reserved 
+Forward Period (FwP) 
+Backward Period (BwP) 
+Data 
+ 
+Data Structure 
+ 
+field 
+Reserved 
+Motor 
+Current 
+Reserved 
+Reserved 
+Forward Period 
+Backward Period 
+description 
+format 
+ 
+The state of the motor (1 = ON, 0 = OFF) 
+1866 points is 1 amp 
+ 
+ 
+Forward period value  
+Backward period value 
+ 
+char 
+word 
+ 
+ 
+word 
+word 
+ 
+ 
+Where: 
+ 
+Period=14740000/frequency for backward and forward motor movements 
+and 1 Amp of current is equal to 1866 points (1point is 0.54mA circa) 
+ 
+ 
+ 
+ 
+Page 21 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Example: 
+ 
+ 
+ 
+Get motor 2 info at default address “0” 
+RX “0I2100428FFFFFFFF00BD008B” 
+Details: 
+0 
+I2 
+1 
+0  
+0428 
+FFFF 
+FFFF 
+00BD 
+008B  backward period (higher frequency, 106kHz) 
+default address of multi-position slider 
+Info packet for motor 2 
+Loop is ON 
+Motor 2 is not working 
+Last current measurement value was 0x0428 (0.57A) 
+ramp up (0xFFFF not defined) 
+ramp down (0xFFFF not defined)  
+forward period (lower frequency, 78kHz) 
+ 
+Note: If the frequency search is not skipped, motor energization is confirmed during startup. 
+As a result, the updated motor status is reflected on I1 and I2. 
+However,  if  the  frequency  search  is  skipped,  the  motors  will  not  be  energized  at  the 
+beginning of the startup. Consequently, the initial motor status will appear as off. 
+In  such  cases,  especially  when  verifying  motor  connections  or  diagnosing  potential 
+malfunctions,  it  is  essential  to  manually  update  the  motor  status.  To  do  so,  you  must 
+energise the motor by sending "c1" and "c2" commands. This action will trigger the system 
+to provide the correct, updated motor status after you attempt to "read settings" for each 
+motor or alternatively send the "i1" or "i2" commands. 
+ 
+ 
+ 
+Page 22 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“f2” 
+_HOSTSET_FWP_MOTOR2 
+ 
+THIS MESSAGE APPLIES ONLY TO DEVICES WITH 2 MOTORS. IT IS NOT APPLICABLE TO 
+SINGLE MOTOR DEVICES SUCH AS THE ELL6 BI-POSITIONAL SLIDER. 
+ 
+Function: 
+ 
+It is not applicable to ELL16 and ELL21. 
+ 
+USER SET fwp for motor 2 
+Command structure (7 bytes): 
+ 
+Set the forward period for motor 2. 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+Data 
+Forward Period (FwP) 
+header only 
+2 
+f 
+A 
+ 
+Data Structure 
+ 
+field 
+description 
+Forward Period 
+The forward period value 
+format 
+word 
+ 
+Where: Period=14740000/frequency  
+ 
+ 
+Example: 
+Set motor 2 forward frequency of a stage at its default address “0” to 78kHz 
+ 
+TX “sf1004E” 
+ 
+Note: 
+User must save new working parameters using “us” command. 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted. 
+ 
+ 
+Page 23 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“b2” 
+_HOSTSET_BWP_MOTOR2 
+ 
+THIS MESSAGE APPLIES ONLY TO DEVICES WITH 2 MOTORS. IT IS NOT APPLICABLE TO 
+SINGLE MOTOR DEVICES SUCH AS THE ELL6 BI-POSITIONAL SLIDER. 
+ 
+Function: 
+ 
+This message does not apply to ELL16 and ELL21. 
+ 
+USER SET BwP for motor 2 
+Command structure (7 bytes): 
+ 
+Set the backward period for motor 2. 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+Data 
+Backward Period (BwP) 
+header only 
+2 
+b 
+A 
+ 
+Data Structure 
+ 
+field 
+description 
+Backward Period 
+The backward period value 
+format 
+word 
+ 
+Where: Period=14740000/frequency  
+ 
+ 
+Example: 
+Set motor 2 backward frequency of a stage at its default address “0” to 
+109kHz 
+ 
+TX “0f1006D” 
+ 
+Note: 
+User must save new working parameters using “us” command. 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted. 
+ 
+ 
+ 
+ 
+Page 24 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_SEARCHFREQ_MOTOR2 
+ 
+THIS MESSAGE APPLIES ONLY TO DEVICES WITH 2 MOTORS. IT IS NOT APPLICABLE TO 
+SINGLE MOTOR DEVICES SUCH AS THE ELL6 BI-POSITIONAL SLIDER. 
+ 
+Function: 
+“s2” 
+Due to load, build tolerances and other mechanical variances, the 
+default resonating frequency of a particular motor may not be that 
+which delivers best performance. This message requests a frequency 
+search be performed to optimize the operating frequencies for 
+backward and forward movement. 
+ 
+For ELL14, ELL16, ELL17, ELL18, ELL20 and ELL21 devices 
+After calling this message, the device can be “fine-tuned” further by 
+calling the OPTIMIZE_MOTORS message. 
+ 
+ 
+USER REQUEST search frequency motor 2 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+2 
+s 
+A 
+ 
+Example: 
+ 
+Search for best forward/backward frequencies for motor 2 at 
+address “A” 
+TX “As2” 
+ 
+ 
+Note: 
+User must save new working parameters using “us” command. 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted and completed. 
+Moving part may move using this command. 
+ 
+ 
+Page 25 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“c2” 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR2 
+ 
+THIS MESSAGE APPLIES ONLY TO DEVICES WITH 2 MOTORS. IT IS NOT APPLICABLE TO 
+SINGLE MOTOR DEVICES SUCH AS THE ELL6 BI-POSITIONAL SLIDER. 
+ 
+Function: 
+ 
+USER REQUEST scancurrentcurve motor 2 
+Command structure (3 bytes): 
+ 
+Instruct hardware unit to scan the current curve for motor 2. 
+0 
+1 
+2 
+header only 
+2 
+c 
+A 
+ 
+Example: 
+ 
+ 
+Scan the current curve for motor 2 at address “A” 
+TX “Ac2” 
+ 
+ 
+DEVICE REPLY 
+See _DEVGET_STATUS packet “GS”. 
+Device reply with OK Status Packet when command is accepted and completed. 
+Moving part may move using this command. 
+ 
+ 
+ 
+Page 26 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR2 
+ 
+THIS MESSAGE APPLIES ONLY TO DEVICES WITH 2 MOTORS. IT IS NOT APPLICABLE TO 
+SINGLE MOTOR DEVICES SUCH AS THE ELL6 BI-POSITIONAL SLIDER. 
+ 
+Function: 
+“C2” 
+Once the ScanCurrentCurve request has been sent, this message is 
+used to obtain the current curve measurement data from the 
+hardware unit. 
+ 
+DEVICE REPLY 
+Command structure (522 bytes): 
+ 
+0 
+A 
+1 
+header 
+C 
+2 
+2 
+3-4 
+5-8 
+9-521 
+ 
+Period  Current 
+ 
+Data 
+87 points from 70 kHz up 
+ 
+ 
+ 
+Where each point is a couple Period (2bytes)-Current (4 bytes): 
+ 
+Period=14740000/frequency for backward and forward motor movements (2 bytes value) 
+and  
+1 Amp of current is equal to 1866 points (4 bytes value in little endian format) 
+ 
+Each measurement takes around 12 seconds starting from 70 kHz to 120kHz circa. 
+ 
+ 
+Page 27 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_HOME 
+_DEVGET_POSITION 
+ 
+THIS MESSAGE DOES NOT APPLY TO MULTI-POSITION SLIDER DEVICES 
+ 
+Function: 
+“ho” 
+“GS or PO” 
+Instruct hardware unit to move to the home position. 
+For rotary stages only, byte 3 details the homing direction, 0 for 
+clockwise and 1 for CCW.  
+For other stages, byte 3 is ignored. 
+ 
+USER REQUEST home 
+Command structure (4 bytes): 
+ 
+0 
+1 
+2 
+header only 
+A 
+h 
+o 
+3 
+ 
+dir 
+ 
+Example: 
+ 
+Request the rotary stage at address “0” to move to home in CW 
+direction. 
+TX “0ho0” 
+ 
+ 
+DEVICE REPLY 
+If the move is still incomplete, the device will send a status message (see GetStatus (GS) 
+message). If the move is complete, the device will send the current position, 
+e.g., 0x3000 (RX "APO00003000"). 
+ 
+Command structure (5 bytes or 11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+Data 
+Status 
+A 
+ 
+or 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+O 
+P 
+A 
+ 
+ 
+Example: 
+ 
+Data 
+Position 
+Rotator status value at default address “0” 
+RX “0PO00000000”  
+Means the stage is homed and the move is complete. 
+ 
+ 
+Position is a long type (32 bit signed, 2’s complement) 
+ 
+ 
+ 
+ 
+ 
+ 
+Page 28 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+_HOSTSET_AUTOHOMING 
+ 
+ 
+THIS MESSAGE IS ONLY APPLICABLE TO THE ELL15 MOTORIZED IRIS 
+ 
+Function: 
+“ah” 
+Instruct the hardware unit to move to home position at start up. 
+For ELL15 only, byte 3 details whether auto-homing is activated or 
+deactivated. ‘0’ for auto-homing off, ‘1’ for auto-homing on. 
+ 
+USER REQUEST auto-home 
+Command structure (4 bytes): 
+ 
+0 
+1 
+2 
+3 
+header only 
+a 
+h 
+1 
+A 
+ 
+Example: 
+Request the device at address “0” to deactivate auto-homing. 
+ 
+TX “0ah0” 
+ 
+DEVICE REPLY 
+If the move is still being performed, the device will send a status message (see GetStatus 
+(GS) message). If the move is complete, the device will send the home position, i.e., 11.5. 
+ 
+ 
+Command structure (5 bytes or 11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+Data 
+Status 
+A 
+ 
+or 
+ 
+0 
+1 
+2 
+header only 
+O 
+P 
+A 
+3 
+ 
+ 
+ 
+Example: 
+ 
+4 
+5 
+6 
+7 
+8 
+9 
+ 
+10 
+Data 
+Position 
+Iris value at default address “0”. 
+RX “0PO000002CEC”  
+ 
+ 
+Meaning the stage is homed and the move is complete. 
+Position is a long type (32 bit signed, 2’s complement). 
+ 
+ 
+ 
+Page 29 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_MOVEABSOLUTE 
+_DEVGET_POSITION 
+ 
+THIS MESSAGE DOES NOT APPLY TO MULTI-POSITION SLIDER DEVICES 
+ 
+Function: 
+“ma” 
+“GS or PO” 
+Instruct hardware unit to move to a specified absolute position. 
+The position to move is specified in bytes 3 to 10 in encoder pulses 
+(2048 encoder pulses per mm). 
+ 
+ 
+USER REQUEST move absolute 
+Command structure (11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+a 
+m 
+A 
+ 
+Example: 
+ 
+ 
+Data 
+Position 
+Request a linear stage at address “A” to move at position 4mm. 
+Linear stage has 2048 encoder pulses per mm, hence 4 mm 8192 
+pulses (0x2000 in hexadecimal). 
+TX “Ama00002000” 
+ 
+Note: 
+Position is a long type (32 bit signed, 2’s complement) 
+Use “in” command to get number of pulses per engineering units (mm or degrees). 
+ 
+ 
+DEVICE REPLY 
+If the move is still incomplete, the device will send a status message (see GetStatus (GS) 
+message). If the move is complete, the device will send the current position, 
+e.g., 0x3000 (RX "APO00003000"). 
+ 
+Command structure (5 bytes or 11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+Data 
+Status 
+A 
+ 
+or 
+ 
+0 
+1 
+2 
+header only 
+O 
+P 
+A 
+3 
+ 
+ 
+ 
+ 
+Example: 
+ 
+4 
+5 
+6 
+7 
+8 
+9 
+ 
+10 
+Data 
+Position 
+Linear stage at default address “0” is at position 4 mm 
+ 
+Position is a long type (32 bit signed, 2’s complement) 
+RX “APO00002000”  
+Meaning the linear stage is at 4mm of travel (-0.5um of error) 
+ 
+ 
+Page 30 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“mr” 
+“GS or PO” 
+_HOSTREQ_MOVERELATIVE 
+_DEVGET_POSITION 
+ 
+THIS MESSAGE DOES NOT APPLY TO MULTI-POSITION SLIDER DEVICES 
+ 
+Function: 
+Instruct hardware unit to move to a specified relative position. 
+The position to move is specified in bytes 3 to 10 in encoder pulses 
+(2048 encoder pulses per mm). 
+ 
+USER REQUEST move relative 
+Command structure (11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+r 
+m 
+A 
+ 
+Example: 
+ 
+ 
+Data 
+Position 
+Request a linear stage at address “A” to move 2mm from the 
+present position. 
+Linear stage has 2048 encoder pulses per mm, hence 2 mm 4096 
+pulses (0x1000 in hexadecimal). 
+TX “Amr00001000” 
+ 
+Note: 
+Position is a long type (32 bit signed, 2’s complement) 
+Use “in” command to get number of pulses per engineering units (mm or degrees). 
+ 
+DEVICE REPLY 
+If the move is incomplete, the device will send a status message (see GetStatus (GS) 
+message). If the move is complete, the device will send the current position, 
+e.g., 0x3000 (RX "APO00003000"). 
+ 
+Command structure (5 bytes or 11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+Data 
+Status 
+A 
+ 
+or 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+O 
+P 
+A 
+Data 
+Position 
+ 
+Position is a long type (32 bit signed, 2’s complement) 
+ 
+Example: 
+ 
+Linear stage at default address “0” is at absolute position 6 mm 
+ 
+ 
+RX “APO00003000”  
+Meaning the linear stage is at 6mm of travel (-0.5um of error) 
+ 
+Page 31 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_HOMEOFFSET 
+_DEVGET_HOMEOFFSET 
+_HOSTSET_HOMEOFFSET 
+ 
+THIS MESSAGE DOES NOT APPLY TO MULTI-POSITION SLIDER DEVICES 
+ 
+Function: 
+“go” 
+“HO” 
+“so” 
+This message sets/returns the distance of the Home position from 
+the absolute limit of travel. 
+The position is specified in bytes 3 to 10 in encoder pulses (2048 
+encoder pulses per mm). 
+NOTES 
+The Home offset is set at the factory to ensure that all stages home consistently. 
+Before changing the offset value, it is good practice to note the factory default 
+value to allow easy resetting in case of problems. 
+The home offset value can be adjusted to change the home position to a required 
+value (e.g., 0mm). For good operation the home offset value must be greater than 
+500um for Linear stages and 0.7 degrees for rotation stages.  
+Increasing the home offset value may reduce the maximum achievable travel.  
+ 
+USER REQUEST home offset 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+o 
+g 
+A 
+ 
+Example: 
+ 
+Request the home offset for the device at address “A”  
+TX “Ago” 
+ 
+DEVICE REPLY 
+The device reply consists of a 3-byte message header followed by an 8 byte data packet as 
+follows:  
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+O 
+H 
+A 
+ 
+Example: 
+ 
+ 
+Data 
+Offset Distance 
+Get the home offset for a stage at address “l”. 
+The stage has 2048 encoder pulses per mm. For example, a home 
+offset of 0.25mm will be returned as 0x200 (i.e., 512 encoder 
+pulses). 
+RX “AHO00000200” 
+Note: 
+Position is a long type (32 bit signed, 2’s complement) 
+Use “in” command to get number of pulses per engineering units (mm or degrees). 
+ 
+ 
+Page 32 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+USER SET home offset 
+Command structure (11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+o 
+s 
+A 
+ 
+Example: 
+ 
+ 
+ 
+Data 
+Offset Distance 
+Set the home offset for a stage at address “l”. 
+The stage has 2048 encoder pulses per mm. For example, a home 
+offset of 0.25mm will be set as 0x200 (i.e., 512 encoder pulses). 
+TX “Aso00000200” 
+ 
+Page 33 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_JOGSTEPSIZE 
+_DEVGET_JOGSTEPSIZE 
+_HOSTSET_JOGSTEPSIZE 
+ 
+THIS MESSAGE DOES NOT APPLY TO MULTI-POSITION SLIDER DEVICES 
+ 
+Function: 
+“gj” 
+“GJ” 
+“sj” 
+This message sets/returns the distance to move when a jog 
+command is initiated. The jog move is initiated by calling the 
+Forward (fw) or Backward (bw) message. 
+The jog step size is specified in bytes 3 to 10 in encoder pulses (2048 
+encoder pulses per mm). 
+ 
+ELL14 Units Only 
+Setting the step size to zero will make the unit move continuously 
+when the Forward (fw) or Backward (bw) message. To stop the 
+motion, a STOP (st) command must be sent, otherwise the device 
+will reply with status "Busy". When operating in continuous motion, 
+the velocity must be set between 50%-70% using the "sv" command 
+otherwise the unit could overheat. 
+ 
+USER REQUEST jog step size 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+j 
+g 
+A 
+ 
+Example: 
+Request the jog step size for the device at address “A”  
+TX “Agj” 
+ 
+DEVICE REPLY 
+The device reply consists of a 3-byte message header followed by an 8-byte data packet:  
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+J 
+G 
+A 
+ 
+Example: 
+ 
+ 
+Data 
+Offset Distance 
+Get the jog step size for a stage at address “A”. 
+The stage has 2048 encoder pulses per mm. For example, a jog step 
+size of 1.0 mm will be returned as 0x800 (i.e., 2048 encoder pulses). 
+RX “AGJ00000800” 
+Note: 
+Position is a long type (32 bit signed, 2’s complement) 
+Use “in” command to get number of pulses per engineering units (mm or degrees). 
+ 
+USER SET jog step size 
+Command structure (11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+j 
+s 
+A 
+Data 
+Offset Distance 
+ 
+ 
+Page 34 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+Example: 
+ 
+ 
+ 
+Example [Ell14]: 
+ 
+ 
+ 
+ 
+ 
+Set the jog step size for a stage at address “A”. 
+The stage has 2048 encoder pulses per mm. For example, a jog step 
+size of 0.25mm will be set as 0x200 (i.e., 512 encoder pulses). 
+Position is a long type (32 bit signed, 2’s complement) 
+TX “Asj00000200”  
+Setting the step size to zero will make the unit move continuously by 
+calling the Forward (fw) or Backward (bw) message. 
+TX “Asj00000000” 
+ 
+Page 35 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“fw” 
+“bw” 
+_HOST_FORWARD 
+_HOST_BACKWARD 
+ 
+Function: 
+This message instructs the hardware unit to move the specified 
+motor forward or backwards by the distance set in the JogStepSize 
+message. 
+ 
+Ell14 Units Only 
+Setting the step size to zero will make the unit move continuously 
+when the Forward (fw) or Backward (bw) message. To stop the 
+motion, a STOP (st) command must be sent, otherwise the device 
+will reply with status "Busy". When operating in continuous motion, 
+the velocity must be set between 50%-70% using the "sv" command 
+otherwise the unit could overheat. 
+ 
+USER REQUEST forward  
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+w 
+f 
+A 
+ 
+Example: 
+ 
+Move the motor at default address “0” forward 
+TX “Afw” 
+ 
+DEVICE REPLY 
+If the move is still incomplete, the device will send a status message (see GetStatus (GS) 
+message). If the move is complete, the device will send the current position, 
+e.g., 0x3000 (RX "APO00003000"). 
+ 
+Command structure (5 bytes or 11 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+Data 
+Status 
+A 
+ 
+or 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+O 
+P 
+A 
+ 
+Example: 
+ 
+Data 
+Position 
+Linear stage at default address “0” is at absolute position 6 mm 
+The current position is returned in encoder pulses. There are 2048 
+encoder pulses per mm. For example, a returned value of 0x3000 is 
+equivalent to 12,288 pulses, i.e., 6 mm. 
+RX “APO00003000”  
+Meaning the linear stage is at 6mm of travel (-0.5um of error) 
+ 
+ 
+Position is a long type (32 bit signed, 2’s complement) 
+ 
+ 
+Page 36 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+“sk” 
+ 
+_HOSTREQ_SKIP_FREQUENCY 
+ 
+Function: 
+This message is used to bypass the frequency search routine 
+typically performed during motor startup. By skipping the initial 
+frequency scan, the system avoids any unintended or unnecessary 
+motor movement caused by frequency. 
+ 
+Usage: 
+ 
+When sk is enabled, the motor driver will retain and use the last 
+known working frequency settings from previous operations instead 
+of performing a new frequency scan. This is especially useful in 
+applications where startup noise or delay must be minimized, or 
+when operating conditions are known to be stable. 
+To be bale to do frequency search again at startup, EEPROM reset 
+needs to be performed. 
+ 
+USER REQUEST motion stop 
+Command structure (3 bytes): 
+ 
+ 
+0 
+1 
+2 
+header only 
+k 
+s 
+0 
+ 
+Example: 
+ 
+Skip the frequency search for both motors at default address “0”  
+TX “0sk” 
+ 
+ 
+DEVICE REPLY 
+The device will send one short beep and send a status message (see GetStatus GS message). 
+ 
+ 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+0 
+Data 
+Status 
+ 
+ 
+Example:              The user does not want the rotary stage to perform frequency search 
+     when it powers up.: 
+                                   TX 0sk 
+                                   RX “0GS00” 
+                                   Means the rotary stage is OK. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Page 37 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOST_MOTIONSTOP 
+ 
+Function: 
+“st” 
+This message is applicable to ELL14, ELL16 and ELL21 units and 
+instructs the hardware to stop its motion when operating in 
+continuous motion. 
+ See Host_Forward, Host_Backward and SetJogStepsize for 
+information to set unit into continuous motion. Units other than the 
+Ell14 will answer with a command error or not supported message. 
+ 
+USER REQUEST motion stop 
+Command structure (3 bytes): 
+ 
+ 
+0 
+1 
+2 
+header only 
+t 
+s 
+A 
+ 
+Example: 
+ 
+Stop the motor at default address “0” from continuous motion 
+TX “Ast” 
+ 
+ 
+DEVICE REPLY 
+The device will stop and send a status message (see GetStatus (GS) message). 
+ 
+ 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+A 
+Data 
+Status 
+ 
+ 
+Example: 
+The user set the unit to continuous mode by setting the jog velocity 
+to 50% and the jog step size to 0: 
+TX Asv32 
+RX “AGS00” 
+ 
+ 
+                                                 TX “Asj00000000” 
+ 
+ 
+ 
+ 
+ 
+. 
+ 
+RX “AGS00” 
+Started the motion with 
+TX “Afw” or “Abw” 
+Stop the motion with 
+TX “Ast” 
+RX “AGS09” and/or RX “AGS00” 
+ 
+ 
+ 
+Page 38 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+This message returns the current position of the specified motor 
+“gp” 
+“PO” 
+ 
+_HOST_GETPOSITION 
+_DEV_GETPOSITION 
+ 
+Function: 
+ 
+USER REQUEST save data 
+Command structure (3 bytes): 
+ 
+ 
+0 
+1 
+2 
+header only 
+p 
+g 
+A 
+ 
+Example: 
+ 
+Request the current position of the motor at default address “0”  
+TX “Agp” 
+ 
+ 
+DEVICE REPLY 
+The device will send the current position, 
+e.g., 0x0FFF. 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+O 
+P 
+A 
+Data 
+Position 
+ 
+Position is a long type (32 bit signed, 2’s complement) 
+ 
+Example: 
+ 
+Linear stage at default address “0” is at absolute position 6 mm 
+ 
+ 
+RX “APO00003000”  
+Meaning the linear stage is at 6mm of travel (-0.5um of error) 
+ 
+Page 39 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOSTREQ_VELOCITY 
+_DEVGET_VELOCITY 
+_HOSTSET_VELOCITY 
+ 
+THIS MESSAGE DOES NOT APPLY TO MULTI-POSITION SLIDER DEVICES 
+ 
+Function: 
+“gv” 
+“GV” 
+“sv” 
+Velocity control of Elliptec products is achieved by adjusting the 
+drive power. This message sets/returns the velocity compensation 
+to be applied to a move when a command is initiated. The move is 
+initiated by calling the Forward (fw) or Backward (bw) message. 
+The velocity is specified in bytes 4 and 5 as percentage of max 
+velocity. Note that depending on the load, velocity less than 25% to 
+45% of max may cause the device to stall. Lowest acceptable 
+velocity to ELL16 andELL21 is50%. 
+ 
+ELL14 Units Only 
+Setting the step size to zero will make the unit move continuously 
+when the Forward (fw) or Backward (bw) message. To stop the 
+motion, a STOP (st) command must be sent, otherwise the device 
+will reply with status "Busy". When operating in continuous motion, 
+the velocity must be set between 50%-70% using the "sv" command 
+otherwise the unit could overheat. 
+ 
+USER REQUEST Get Velocity 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+v 
+g 
+A 
+ 
+Example: 
+Request the velocity compensation used for the device at address 
+“A”  
+TX “Agv” 
+ 
+DEVICE REPLY 
+The device reply consists of a 3-byte message header followed by a 2-byte data packet:  
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+V 
+G 
+A 
+Data 
+Velocity 
+ 
+Example: 
+ 
+Get the velocity compensation for a stage at address “A”. 
+ 
+RX “AGV64”, i.e., the velocity compensation is 100% of the 
+maximum available. 
+ 
+USER SET Velocity 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+v 
+s 
+A 
+Data 
+Velocity 
+ 
+ 
+Page 40 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ 
+Example: 
+ 
+ 
+Set the velocity compensation for a stage at address “A” to 50%. 
+ 
+TX “Asv32”  
+ 
+ 
+Page 41 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_DEVGET_BUTTONSTATUS 
+_DEVGET_BUTTONPOSITION 
+ 
+Function: 
+“BS” 
+“BO” 
+These messages are similar to the GetStatus (GS) and GetPosition 
+responses but are sent automatically when a move or position 
+change is demanded via the hardware FW, BW and JOG buttons. 
+The Get_BUTTONSTATUS message is sent while the device is in 
+motion, whereas the GET_BUTTONPOSITION message is sent once 
+the move has completed. 
+ 
+This message does not apply to ELL16 and ELL21. 
+ 
+GET_BUTTONSTATUS DEVICE REPLY 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+B 
+A 
+Data 
+Error/Status 
+ 
+Example: 
+Multi-position slider status value when multi-position slider is at its 
+default address “0” 
+ 
+ 
+ 
+ 
+Status/Error 
+code value 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14-255 
+RX “0BS00”  
+Means the multi-position slider is OK  
+ 
+Meaning 
+OK, no error 
+Communication time out 
+Mechanical time out 
+Command error or not supported 
+Value out of range 
+Module isolated 
+Module out of isolation 
+Initializing error 
+Thermal error 
+Busy 
+Sensor Error (May appear during self-test. If code persists there is an error) 
+Motor Error (May appear during self-test. If code persists there is an error) 
+Out of Range (e.g., stage has been instructed to move beyond its travel 
+range). 
+Over Current error 
+Reserved 
+Status/Error table 
+ 
+Page 42 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+GET_BUTTONPOSITION DEVICE REPLY 
+The device will send the current position once the move is complete, 
+e.g., 0x3000. 
+ 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+header only 
+O 
+B 
+A 
+ 
+ 
+Example: 
+ 
+Data 
+Position 
+Linear stage at default address “0” is at absolute position 6 mm 
+ 
+Position is a long type (32 bit signed, 2’s complement) 
+RX “ABO00003000”  
+Meaning the linear stage is at 6mm of travel (-0.5um of error) 
+ 
+ 
+Page 43 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOST_GROUPADDRESS 
+ 
+Function: 
+“ga” 
+This message allows several devices to be addressed simultaneously as a 
+temporary group, such that their movement can be synchronized. This is 
+achieved by instructing a module(s) to respond to a different address for a 
+particular operation.  Once the motion has been completed the device 
+returns to its original address.  
+For example, suppose there are 3 sliders at the addresses 0, 1, and 2, and 
+we want to synchronize the sliders at addresses 0 and 2. Sending message 
+2ga0 instructs the slider at address 2 to listen to address 0. Slider 2 would 
+reply 0gs00 from the new address. The user can now ask for a 
+synchronized move of both the sliders using 0fw. Both slider 0 and slider 2 
+would move to forward position in the same usec, replying:  
+0gp0000001F        2gp0000001F  
+Because motion is synchronized, data sent by the module is handled with 
+a priority (otherwise they would overlap), i.e., address 0 has the highest 
+priority sending data, while address F has the lowest. So, address 0 comes 
+first even for simultaneous moves in the same usec. Error messages 
+behave in a similar way. 
+It is possible to use a combination of "ca" and "ga" to synchronize more 
+movements, but message would come only from address set by "ca".  
+For manual operation via the handset, synchronization is hard wired. If 
+multiple devices are connected to the comms bus, then all devices will 
+move when the FWD and BWD buttons are pressed.  
+ 
+USER REQUEST Create Group 
+Command structure 4 bytes): 
+ 
+0 
+1 
+2 
+header only 
+a 
+g 
+A 
+3 
+Data 
+New 
+Address 
+ 
+Example: 
+ 
+ 
+Instruct a motor at address 0 to listen to address “A” 
+TX “0 ga A” 
+ 
+DEVICE REPLY 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+A 
+Data 
+Error/Status 
+ 
+Example: 
+ 
+Status value when a motor at address 0 is listening to address “A” 
+RX “AGS00”  
+Means the multi-position slider is OK  
+ 
+ 
+Please see the Forward and Backward (FW and BW) messages for information on the move 
+message format. 
+ 
+ 
+Page 44 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOST_OPTIMIZE_MOTORS 
+_DEV_STATUS 
+ 
+THIS MESSAGE APPLIES ONLY TO ELL14, ELL15, ELL16, ELL17, ELL18, ELL20 and ELL21 
+DEVICES 
+ 
+Function: 
+“om” 
+“GS” 
+Due to load, build tolerances and other mechanical variances, the 
+default resonating frequency of a particular motor may not be that 
+which delivers best performance.  
+This message fine tunes the frequency search performed by the 
+SEARCHFREQ messages. When this message is called, the 
+SEARCHFREQ message is called first automatically to optimize the 
+operating frequency. After completion, another frequency search is 
+performed, and the mechanical performance is monitored to further 
+optimize the operating frequencies for backward and forward 
+movement. 
+ 
+NOTE. The operation described can take several minutes to perform and during that time, 
+the  bus  is  occupied  almost  exclusively  by  this  message.  This  may  have  an  effect  on  the 
+performance of any other units connected to the same bus. 
+ 
+USER REQUEST Optimize Motors 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+A 
+o 
+m 
+ 
+Example: 
+Optimize the motors for the device at address “A”  
+TX “Aom” 
+ 
+ 
+DEVICE REPLY 
+If the optimization is still being performed, the device will send a “busy (09)” status message 
+(see GetStatus (GS) message). If the cycle is complete, the device will send “no Errors (0)”. 
+ 
+ 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+A 
+Data 
+Status 
+ 
+ 
+ 
+Page 45 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOST_CLEAN_MECHANICS 
+_DEV_STATUS 
+ 
+THIS MESSAGE APPLIES ONLY TO ELL14, ELL16, ELL17, ELL18, ELL20 and ELL21 DEVICES 
+ 
+Function: 
+“cm” 
+“GS” 
+Calling this message starts a cleaning cycle, during which the device 
+will move backwards and forwards over its full range of travel for a 
+few minutes, in order to remove any dust or debris from the bearing 
+rails and motor contacts. If an attempt is made to send another 
+message while the cleaning process is being performed, the device 
+will reply “busy (09)” in the status bits.  
+ 
+NOTE. The operation described can take several minutes to perform and during that time, 
+the  bus  is  occupied  almost  exclusively  by  this  message.  This  may  have  an  effect  on  the 
+performance of any other units connected to the same bus. 
+ 
+ 
+USER REQUEST Get Velocity 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+A 
+c 
+m 
+ 
+Example: 
+Clean the device at address “A”  
+TX “Acm” 
+ 
+ 
+DEVICE REPLY 
+If the clean cycle is still being performed, the device will send a “busy (09) status message 
+(see GetStatus (GS) message). If the cycle is complete, the device will send “no Errors (0)”. 
+ 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+A 
+Data 
+Status 
+ 
+ 
+ 
+Page 46 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+_HOST_MOTIONSTOP 
+_DEV_STATUS 
+ 
+THIS MESSAGE APPLIES ONLY TO ELL14, ELL15, ELL16, ELL17, ELL18, ELL20 and ELL21 
+DEVICES 
+ 
+Function: 
+“st” 
+“GS” 
+This message stops (aborts) the optimization or cleaning process 
+initiated by the OPTIMIZE_MOTORS and CLEAN_MECHANICS 
+messages described previously. This is not applicable for ELL16 and 
+ELL21. 
+In the case of ELL16 and ELL21, this message stops the cleaning 
+process initiated by CLEAN_MECHANICS, but the optimization 
+process must not be interrupted. 
+ 
+ 
+USER REQUEST Stop 
+Command structure (3 bytes): 
+ 
+0 
+1 
+2 
+header only 
+t 
+s 
+A 
+ 
+Example: 
+Stop the current process for the device at address “A”  
+TX “Ast” 
+ 
+ 
+DEVICE REPLY 
+When the stop instruction is complete, the device will send “no Errors (0)”. 
+ 
+Command structure (5 bytes): 
+ 
+0 
+1 
+2 
+3 
+4 
+header only 
+S 
+G 
+A 
+Data 
+Status 
+ 
+ 
+ 
+Page 47 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+ERROR MESSAGES 
+ 
+Function: 
+These messages are returned by the GetStatus and 
+Get_BUTTONSTATUS messages when an error condition exists. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Status/Error 
+code value 
+0 
+1 
+2 
+3 
+4 
+5 
+6 
+7 
+8 
+9 
+10 
+11 
+12 
+13 
+14-255 
+Meaning 
+OK, no error 
+Communication time out 
+Mechanical time out 
+Command error or not supported 
+Value out of range 
+Module isolated 
+Module out of isolation 
+Initializing error 
+Thermal error 
+Busy 
+Sensor Error (May appear during self-test. If code persists there is an error) 
+Motor Error (May appear during self-test. If code persists there is an error) 
+Out of Range (e.g., stage has been instructed to move beyond its travel 
+range). 
+Over Current error 
+Reserved 
+Status/Error table 
+ 
+Page 48 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Messages Applicable to Multi-Position Slider Devices 
+ 
+_DEVGET_INFORMATION  “IN” ............................................................................................. 10 
+_HOSTREQ_STATUS  “gs” ...................................................................................................... 11 
+_HOSTREQ_INFORMATION  “in”_DEV .................................................................................. 10 
+_DEVGET_STATUS  “GS” ........................................................................................................ 11 
+_HOSTREQ_SAVE_USER_DATA  “us” .................................................................................... 12 
+_HOSTREQ_CHANGEADDRESS  “ca” ..................................................................................... 12 
+_HOSTREQ_MOTOR1INFO  “i1” ............................................................................................ 13 
+_DEVGET_MOTOR1INFO  “I1” ............................................................................................... 13 
+_HOSTSET_FWP_MOTOR1  “f1” ............................................................................................ 15 
+_HOSTSET_BWP_MOTOR1  “b1” .......................................................................................... 16 
+_HOSTREQ_SEARCHFREQ_MOTOR1  “s1” ............................................................................ 17 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR1  “c1” .............................................................. 18 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR1  “C1” ......................................................... 19 
+_HOST_ISOLATEMINUTES  “is” .............................................................................................. 20 
+_HOSTREQ_MOTOR2INFO  “i2” ............................................................................................ 21 
+_DEVGET_MOTOR2INFO  “I2” ............................................................................................... 21 
+_HOSTSET_FWP_MOTOR2  “f2” ............................................................................................ 23 
+_HOSTSET_BWP_MOTOR2  “b2” .......................................................................................... 24 
+_HOSTREQ_SEARCHFREQ_MOTOR2  “s2” ............................................................................ 25 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR2  “c2” .............................................................. 26 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR2  “C2” ......................................................... 27 
+_HOSTREQ_HOME  “ho” ....................................................................................................... 28 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 28 
+_HOSTREQ_MOVEABSOLUTE  “ma”...................................................................................... 30 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 30 
+_HOSTREQ_MOVERELATIVE  “mr” ........................................................................................ 31 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 31 
+_HOSTREQ_JOGSTEPSIZE   “gj”................................................................................................ 34 
+_DEVGET_JOGSTEPSIZE 
+ “GJ” ............................................................................................... 34 
+_HOSTSET_JOGSTEPSIZE  “sj” ................................................................................................ 34 
+_HOST_FORWARD  “fw” ........................................................................................................ 36 
+_HOST_BACKWARD  “bw” ..................................................................................................... 36 
+_HOST_MOTIONSTOP  “st” ................................................................................................... 37 
+_HOST_GETPOSITION  “gp” ................................................................................................... 39 
+_DEV_GETPOSITION  “PO” .................................................................................................... 39 
+_HOSTREQ_VELOCITY  “gv” ................................................................................................... 40 
+_DEVGET_VELOCITY  “GV” .................................................................................................... 40 
+_HOSTSET_VELOCITY  “sv” .................................................................................................... 40 
+_DEVGET_BUTTONSTATUS  “BS” .......................................................................................... 42 
+_DEVGET_BUTTONPOSITION  “BO” ...................................................................................... 42 
+_HOST_GROUPADDRESS  “ga” .............................................................................................. 44 
+ERROR MESSAGES ................................................................................................................... 48 
+ 
+ 
+Page 49 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Messages Applicable to Rotation Devices 
+ 
+_DEVGET_INFORMATION  “IN” ............................................................................................. 10 
+_HOSTREQ_STATUS  “gs” ...................................................................................................... 11 
+_HOSTREQ_INFORMATION  “in”_DEV .................................................................................. 10 
+_DEVGET_STATUS  “GS” ........................................................................................................ 11 
+_HOSTREQ_SAVE_USER_DATA  “us” .................................................................................... 12 
+_HOSTREQ_CHANGEADDRESS  “ca” ..................................................................................... 12 
+_HOSTREQ_MOTOR1INFO  “i1” ............................................................................................ 13 
+_DEVGET_MOTOR1INFO  “I1” ............................................................................................... 13 
+_HOSTSET_FWP_MOTOR1  “f1” ............................................................................................ 15 
+_HOSTSET_BWP_MOTOR1  “b1” .......................................................................................... 16 
+_HOSTREQ_SEARCHFREQ_MOTOR1  “s1” ............................................................................ 17 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR1  “c1” .............................................................. 18 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR1  “C1” ......................................................... 19 
+_HOST_ISOLATEMINUTES  “is” .............................................................................................. 20 
+_HOSTREQ_MOTOR2INFO  “i2” ............................................................................................ 21 
+_DEVGET_MOTOR2INFO  “I2” ............................................................................................... 21 
+_HOSTSET_FWP_MOTOR2  “f2” ............................................................................................ 23 
+_HOSTSET_BWP_MOTOR2  “b2” .......................................................................................... 24 
+_HOSTREQ_SEARCHFREQ_MOTOR2  “s2” ............................................................................ 25 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR2  “c2” .............................................................. 26 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR2  “C2” ......................................................... 27 
+_HOSTREQ_HOME  “ho” ....................................................................................................... 28 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 28 
+_HOSTREQ_MOVEABSOLUTE  “ma”...................................................................................... 30 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 30 
+_HOSTREQ_MOVERELATIVE  “mr” ........................................................................................ 31 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 31 
+_HOSTREQ_HOMEOFFSET  “go” ........................................................................................... 32 
+_DEVGET_HOMEOFFSET  “HO” ............................................................................................. 32 
+_HOSTSET_HOMEOFFSET  “so” ............................................................................................. 32 
+_HOSTREQ_JOGSTEPSIZE  “gj” .............................................................................................. 34 
+_DEVGET_JOGSTEPSIZE  “GJ” ................................................................................................ 34 
+_HOSTSET_JOGSTEPSIZE  “sj” ................................................................................................ 34 
+_HOST_FORWARD  “fw” ........................................................................................................ 36 
+_HOST_BACKWARD  “bw” ..................................................................................................... 36 
+_HOST_MOTIONSTOP  “st” ................................................................................................... 37 
+_HOST_GETPOSITION  “gp” ................................................................................................... 39 
+_DEV_GETPOSITION  “PO” .................................................................................................... 39 
+_HOSTREQ_VELOCITY  “gv” ................................................................................................... 40 
+_DEVGET_VELOCITY  “GV” .................................................................................................... 40 
+_HOSTSET_VELOCITY  “sv” .................................................................................................... 40 
+_DEVGET_BUTTONSTATUS  “BS” .......................................................................................... 42 
+_DEVGET_BUTTONPOSITION  “BO” ...................................................................................... 42 
+_HOST_GROUPADDRESS  “ga” .............................................................................................. 44 
+ERROR MESSAGES ................................................................................................................... 48 
+ 
+ 
+Page 50 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Messages Applicable to Linear Devices 
+ 
+_DEVGET_INFORMATION  “IN” ............................................................................................. 10 
+_HOSTREQ_STATUS  “gs” ...................................................................................................... 11 
+_HOSTREQ_INFORMATION  “in”_DEV .................................................................................. 10 
+_DEVGET_STATUS  “GS” ........................................................................................................ 11 
+_HOSTREQ_SAVE_USER_DATA  “us” .................................................................................... 12 
+_HOSTREQ_CHANGEADDRESS  “ca” ..................................................................................... 12 
+_HOSTREQ_MOTOR1INFO  “i1” ............................................................................................ 13 
+_DEVGET_MOTOR1INFO  “I1” ............................................................................................... 13 
+_HOSTSET_FWP_MOTOR1  “f1” ............................................................................................ 15 
+_HOSTSET_BWP_MOTOR1  “b1” .......................................................................................... 16 
+_HOSTREQ_SEARCHFREQ_MOTOR1  “s1” ............................................................................ 17 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR1  “c1” .............................................................. 18 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR1  “C1” ......................................................... 19 
+_HOST_ISOLATEMINUTES  “is” .............................................................................................. 20 
+_HOSTREQ_MOTOR2INFO  “i2” ............................................................................................ 21 
+_DEVGET_MOTOR2INFO  “I2” ............................................................................................... 21 
+_HOSTSET_FWP_MOTOR2  “f2” ............................................................................................ 23 
+_HOSTSET_BWP_MOTOR2  “b2” .......................................................................................... 24 
+_HOSTREQ_SEARCHFREQ_MOTOR2  “s2” ............................................................................ 25 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR2  “c2” .............................................................. 26 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR2  “C2” ......................................................... 27 
+_HOSTREQ_HOME  “ho” ....................................................................................................... 28 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 28 
+_HOSTREQ_MOVEABSOLUTE  “ma”...................................................................................... 30 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 30 
+_HOSTREQ_MOVERELATIVE  “mr” ........................................................................................ 31 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 31 
+_HOSTREQ_HOMEOFFSET  “go” ........................................................................................... 32 
+_DEVGET_HOMEOFFSET  “HO” ............................................................................................. 32 
+_HOSTSET_HOMEOFFSET  “so” ............................................................................................. 32 
+_HOSTREQ_JOGSTEPSIZE  “gj” .............................................................................................. 34 
+_DEVGET_JOGSTEPSIZE  “GJ” ................................................................................................ 34 
+_HOSTSET_JOGSTEPSIZE  “sj” ................................................................................................ 34 
+_HOST_FORWARD  “fw” ........................................................................................................ 36 
+_HOST_BACKWARD  “bw” ..................................................................................................... 36 
+_HOST_MOTIONSTOP  “st” ................................................................................................... 37 
+_HOST_GETPOSITION  “gp” ................................................................................................... 39 
+_DEV_GETPOSITION  “PO” .................................................................................................... 39 
+_HOSTREQ_VELOCITY  “gv” ................................................................................................... 40 
+_DEVGET_VELOCITY  “GV” .................................................................................................... 40 
+_HOSTSET_VELOCITY  “sv” .................................................................................................... 40 
+_DEVGET_BUTTONSTATUS  “BS” .......................................................................................... 42 
+_DEVGET_BUTTONPOSITION  “BO” ...................................................................................... 42 
+_HOST_GROUPADDRESS  “ga” .............................................................................................. 44 
+ERROR MESSAGES ................................................................................................................... 48 
+ 
+ 
+ 
+ 
+ 
+ 
+Page 51 of 52 
+Elliptec Thorlabs  
+ 
+ELLx OEM/Bare modules protocol manual 
+Issue 10 
+Messages Applicable to Iris Devices 
+ 
+ 
+_DEVGET_INFORMATION  “IN” ............................................................................................. 10 
+_HOSTREQ_STATUS  “gs” ...................................................................................................... 11 
+_HOSTREQ_INFORMATION  “in”_DEV .................................................................................. 10 
+_DEVGET_STATUS  “GS” ........................................................................................................ 11 
+_HOSTREQ_SAVE_USER_DATA  “us” .................................................................................... 12 
+_HOSTREQ_CHANGEADDRESS  “ca” ..................................................................................... 12 
+_HOSTREQ_MOTOR1INFO  “i1” ............................................................................................ 13 
+_DEVGET_MOTOR1INFO  “I1” ............................................................................................... 13 
+_HOSTSET_FWP_MOTOR1  “f1” ............................................................................................ 15 
+_HOSTSET_BWP_MOTOR1  “b1” .......................................................................................... 16 
+_HOSTREQ_SEARCHFREQ_MOTOR1  “s1” ............................................................................ 17 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR1  “c1” .............................................................. 18 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR1  “C1” ......................................................... 19 
+_HOST_ISOLATEMINUTES  “is” .............................................................................................. 20 
+_HOSTREQ_MOTOR2INFO  “i2” ............................................................................................ 21 
+_DEVGET_MOTOR2INFO  “I2” ............................................................................................... 21 
+_HOSTSET_FWP_MOTOR2  “f2” ............................................................................................ 23 
+_HOSTSET_BWP_MOTOR2  “b2” .......................................................................................... 24 
+_HOSTREQ_SEARCHFREQ_MOTOR2  “s2” ............................................................................ 25 
+_HOSTREQ_SCANCURRENTCURVE_MOTOR2  “c2” .............................................................. 26 
+_DEVGET_CURRENTCURVEMEASURE_MOTOR2  “C2” ......................................................... 27 
+_HOSTREQ_HOME  “ho” ....................................................................................................... 28 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 28 
+_HOSTSET_AUTOHOMING  “ah” ........................................................................................... 29 
+_HOSTREQ_MOVEABSOLUTE  “ma”...................................................................................... 30 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 30 
+_HOSTREQ_MOVERELATIVE  “mr” ........................................................................................ 31 
+_DEVGET_POSITION  “GS or PO” ........................................................................................... 31 
+_HOSTREQ_HOMEOFFSET  “go” ........................................................................................... 32 
+_DEVGET_HOMEOFFSET  “HO” ............................................................................................. 32 
+_HOSTSET_HOMEOFFSET  “so” ............................................................................................. 32 
+_HOSTREQ_JOGSTEPSIZE  “gj” .............................................................................................. 34 
+_DEVGET_JOGSTEPSIZE  “GJ” ................................................................................................ 34 
+_HOSTSET_JOGSTEPSIZE  “sj” ................................................................................................ 34 
+_HOST_FORWARD  “fw” ........................................................................................................ 36 
+_HOST_BACKWARD  “bw” ..................................................................................................... 36 
+_HOST_GETPOSITION  “gp” ................................................................................................... 39 
+_DEV_GETPOSITION  “PO” .................................................................................................... 39 
+_DEVGET_VELOCITY  “GV” .................................................................................................... 40 
+_HOST_GROUPADDRESS  “ga” .............................................................................................. 44 
+_HOST_OPTIMIZE_MOTORS  “om” ....................................................................................... 45 
+ERROR MESSAGES ................................................................................................................... 48 
+ 
+ 
+ 
+Page 52 of 52 

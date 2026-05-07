@@ -1,0 +1,2817 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ui version="4.0">
+ <class>Integration</class>
+ <widget class="QMainWindow" name="Integration">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1492</width>
+    <height>1064</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>微软雅黑</family>
+    <bold>true</bold>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>多模块光学测量系统整合平台</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_35">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QFrame" name="frameLeftPanel">
+        <property name="frameShape">
+         <enum>QFrame::Shape::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Shadow::Raised</enum>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_31">
+         <item>
+          <widget class="QTabWidget" name="tabWidget">
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab_connection">
+            <attribute name="title">
+             <string>连接页</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <widget class="QLabel" name="labelConnectionTip">
+               <property name="styleSheet">
+                <string>color: #666; font-size: 10pt; padding: 5px;</string>
+               </property>
+               <property name="text">
+                <string>提示：大部分设备使用默认参数（9600波特率，8数据位，1停止位，无校验）</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxSeedLaserConnection">
+               <property name="title">
+                <string>种子源激光器</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutSeedLaser">
+                <item>
+                 <widget class="QLabel" name="labelSeedLaserStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelSeedLaserPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxSeedLaserPort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelSeedLaserBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxSeedLaserBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerSeedLaser">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectSeedLaser">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectSeedLaser">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxFOPOLaserConnection">
+               <property name="title">
+                <string>FOPO激光器</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutFOPOLaser">
+                <item>
+                 <widget class="QLabel" name="labelFOPOLaserStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelFOPOLaserPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxFOPOLaserPort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelFOPOLaserBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxFOPOLaserBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerFOPOLaser">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectFOPOLaser">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectFOPOLaser">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxStokesLaserConnection">
+               <property name="title">
+                <string>Stokes激光器</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutStokesLaser">
+                <item>
+                 <widget class="QLabel" name="labelStokesLaserStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelStokesLaserPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxStokesLaserPort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelStokesLaserBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxStokesLaserBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerStokesLaser">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectStokesLaser">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectStokesLaser">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxSpectrometerFOPOConnection">
+               <property name="title">
+                <string>FOPO路光谱仪</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutSpectrometerFOPO">
+                <item>
+                 <widget class="QLabel" name="labelSpectrometerFOPOStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelSpectrometerFOPOPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxSpectrometerFOPOPort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelSpectrometerFOPOBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxSpectrometerFOPOBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerSpectrometerFOPO">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectSpectrometerFOPO">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectSpectrometerFOPO">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxSpectrometerStokesConnection">
+               <property name="title">
+                <string>Stokes路光谱仪</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutSpectrometerStokes">
+                <item>
+                 <widget class="QLabel" name="labelSpectrometerStokesStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelSpectrometerStokesPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxSpectrometerStokesPort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelSpectrometerStokesBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxSpectrometerStokesBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerSpectrometerStokes">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectSpectrometerStokes">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectSpectrometerStokes">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxStageConnection">
+               <property name="title">
+                <string>位移台</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutStage">
+                <item>
+                 <widget class="QLabel" name="labelStageStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelStagePort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxStagePort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelStageBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxStageBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerStage">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectStage">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectStage">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxGalvoConnection">
+               <property name="title">
+                <string>振镜（网络）</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutGalvo">
+                <item>
+                 <widget class="QLabel" name="labelGalvoStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelGalvoIP">
+                  <property name="text">
+                   <string>IP地址:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="lineEditGalvoIP">
+                  <property name="text">
+                   <string>172.18.34.227</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerGalvo">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectGalvo">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectGalvo">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBoxDelayConnection">
+               <property name="title">
+                <string>延时线</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayoutDelay">
+                <item>
+                 <widget class="QLabel" name="labelDelayStatus">
+                  <property name="minimumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>30</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>background-color: gray; border-radius: 15px;</string>
+                  </property>
+                  <property name="text">
+                   <string />
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelDelayPort">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>串口:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxDelayPort" />
+                </item>
+                <item>
+                 <widget class="QLabel" name="labelDelayBaudRate">
+                  <property name="font">
+                   <font>
+                    <family>微软雅黑</family>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>波特率:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="comboBoxDelayBaudRate" />
+                </item>
+                <item>
+                 <spacer name="horizontalSpacerDelay">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConnectDelay">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>连接</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnDisconnectDelay">
+                  <property name="minimumSize">
+                   <size>
+                    <width>80</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string>断开</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <spacer name="verticalSpacerConnection">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_galvo">
+            <attribute name="title">
+             <string>振镜版</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_7" stretch="1,3">
+             <item>
+              <widget class="QFrame" name="frameGalvoControlPanel">
+               <property name="frameShape">
+                <enum>QFrame::Shape::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Shadow::Raised</enum>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_13" stretch="4,1">
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="1,1">
+                  <item>
+                   <layout class="QVBoxLayout" name="verticalLayout_6">
+                    <item>
+                     <widget class="QGroupBox" name="groupBoxGalvoAngleSwitch">
+                      <property name="title">
+                       <string>振镜角度控制</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_4">
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,2,1">
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                          <widget class="QLabel" name="labelGalvoAngle">
+                           <property name="font">
+                            <font>
+                             <family>微软雅黑</family>
+                             <bold>false</bold>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>角度</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLineEdit" name="lineEditGalvoAngle" />
+                         </item>
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                          <widget class="QLabel" name="labelGalvoAngleUnit">
+                           <property name="font">
+                            <font>
+                             <family>微软雅黑</family>
+                             <bold>false</bold>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>deg</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmGalvoAngle">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBoxDelayLineSetting">
+                      <property name="title">
+                       <string>延时线控制</string>
+                      </property>
+                      <property name="alignment">
+                       <set>Qt::AlignmentFlag::AlignCenter</set>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_8">
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,2,1">
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                          <widget class="QLabel" name="labelTimeDelay">
+                           <property name="font">
+                            <font>
+                             <family>微软雅黑</family>
+                             <bold>false</bold>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>时间延迟</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLineEdit" name="lineEditTimeDelay" />
+                         </item>
+                         <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                          <widget class="QLabel" name="labelTimeDelayUnit">
+                           <property name="font">
+                            <font>
+                             <family>微软雅黑</family>
+                             <bold>false</bold>
+                            </font>
+                           </property>
+                           <property name="text">
+                            <string>PS</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmTimeDelay">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxPumpPowerSetting">
+                    <property name="title">
+                     <string>泵功率设置</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_5">
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelSeedPump">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>种子源泵</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditSeedPump" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelSeedPumpUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>mA</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmSeedPump">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>25</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelFOPOPump">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>FOPO泵</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditFOPOPump" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelFOPOPumpUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>A</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmFOPOPump">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>25</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStokesPump">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>Stokes泵</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStokesPump" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStokesPumpUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>mA</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmStokesPump">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>25</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QWidget" name="widgetGalvoPresetButtons" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,1">
+                   <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                    <widget class="QPushButton" name="btnLightPowerPreset">
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>光源功率预设置入口</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                    <widget class="QPushButton" name="btnDelayLinePreset">
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>延迟线预设置入口</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QFrame" name="frameGalvoPresetPanel">
+               <property name="frameShape">
+                <enum>QFrame::Shape::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Shadow::Raised</enum>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_14">
+                <item>
+                 <widget class="QGroupBox" name="groupBoxPowerPresetsNew">
+                  <property name="title">
+                   <string>光源功率预设置</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_PowerPresets">
+                   <item>
+                    <widget class="QTableWidget" name="tableWidgetPowerPresets">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>150</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <pointsize>9</pointsize>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="midLineWidth">
+                      <number>0</number>
+                     </property>
+                     <property name="editTriggers">
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
+                     </property>
+                     <property name="alternatingRowColors">
+                      <bool>true</bool>
+                     </property>
+                     <property name="columnCount">
+                      <number>6</number>
+                     </property>
+                     <attribute name="horizontalHeaderDefaultSectionSize">
+                      <number>100</number>
+                     </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>振镜起始(deg)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>振镜结束(deg)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>种子源泵(mA)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>FOPO泵(A)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>Stokes泵(mA)</string>
+                      </property>
+                     </column>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_PowerPresetButtons">
+                     <item>
+                      <spacer name="horizontalSpacerPowerButtonsLeft">
+                       <property name="orientation">
+                        <enum>Qt::Orientation::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item alignment="Qt::AlignmentFlag::AlignRight">
+                      <widget class="QPushButton" name="btnEditPowerPresets">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>编辑</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBoxDelayPresetsGalvo">
+                  <property name="title">
+                   <string>延迟线预设置</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_DelayPresetsGalvo">
+                   <item>
+                    <widget class="QTableWidget" name="tableWidgetDelayPresetsGalvo">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>150</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <pointsize>9</pointsize>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="editTriggers">
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
+                     </property>
+                     <property name="alternatingRowColors">
+                      <bool>true</bool>
+                     </property>
+                     <property name="columnCount">
+                      <number>3</number>
+                     </property>
+                     <attribute name="horizontalHeaderDefaultSectionSize">
+                      <number>100</number>
+                     </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>振镜角度(deg)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>延迟时间(PS)</string>
+                      </property>
+                     </column>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_DelayPresetButtonsGalvo">
+                     <item>
+                      <spacer name="horizontalSpacerDelayButtonsGalvoLeft">
+                       <property name="orientation">
+                        <enum>Qt::Orientation::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item alignment="Qt::AlignmentFlag::AlignRight">
+                      <widget class="QPushButton" name="btnEditDelayPresetsGalvo">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>编辑</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="widgetGalvoConfirmButton" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_36">
+                   <item>
+                    <spacer name="horizontalSpacerGalvoConfirm1">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="labelGalvoTimeInterval">
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>时间间隔:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="spinBoxGalvoTimeInterval">
+                     <property name="suffix">
+                      <string> 秒</string>
+                     </property>
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>3600</number>
+                     </property>
+                     <property name="value">
+                      <number>2</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacerGalvoConfirm2">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnConfirmDelayPreset">
+                     <property name="minimumSize">
+                      <size>
+                       <width>100</width>
+                       <height>35</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>开始执行</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacerGalvoConfirm3">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="verticalSpacer">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_stage">
+            <attribute name="title">
+             <string>位移台版</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_30" stretch="1,3">
+             <item>
+              <widget class="QFrame" name="frameStageControlPanel">
+               <property name="frameShape">
+                <enum>QFrame::Shape::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Shadow::Raised</enum>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayout_77">
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_28" stretch="1,1,1">
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxStageAngle">
+                    <property name="title">
+                     <string>旋转台角度</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_24">
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_71" stretch="1,2,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageAngle">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>角度</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStageAngle" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageAngleUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>deg</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                      <widget class="QPushButton" name="btnConfirmStageAngle">
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>确定</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxStagePosition">
+                    <property name="title">
+                     <string>位移平台位置</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_25" stretch="0,0">
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_72" stretch="1,2,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStagePosition">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>位置</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStagePosition" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStagePositionUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>mm</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                      <widget class="QPushButton" name="btnConfirmStagePosition">
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>确定</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QWidget" name="widgetStagePresetButtons" native="true">
+                    <layout class="QVBoxLayout" name="verticalLayout_23">
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                      <widget class="QPushButton" name="btnStagePowerPreset">
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>电控平台与功率预设置入口</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                      <widget class="QPushButton" name="btnStageDelayPreset">
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>延迟线预设置入口</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="2,1">
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxStagePumpPower">
+                    <property name="title">
+                     <string>泵功率设置</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_27">
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_74" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageSeedPump">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>种子源泵</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStageSeedPump" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageSeedPumpUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>mA</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmStageSeedPump">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>25</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_75" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageFOPOPump">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>FOPO泵</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStageFOPOPump" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageFOPOPumpUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>A</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmStageFOPOPump">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>25</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_76" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageStokesPump">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>Stokes泵</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStageStokesPump" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageStokesPumpUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>mA</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QPushButton" name="btnConfirmStageStokesPump">
+                         <property name="minimumSize">
+                          <size>
+                           <width>60</width>
+                           <height>25</height>
+                          </size>
+                         </property>
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="groupBoxStageDelayLine">
+                    <property name="title">
+                     <string>延迟线设置</string>
+                    </property>
+                    <property name="alignment">
+                     <set>Qt::AlignmentFlag::AlignCenter</set>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_26">
+                     <item>
+                      <layout class="QHBoxLayout" name="horizontalLayout_73" stretch="1,2,1,1">
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageTimeDelay">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>时间延迟</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLineEdit" name="lineEditStageTimeDelay" />
+                       </item>
+                       <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                        <widget class="QLabel" name="labelStageTimeDelayUnit">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>PS</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="btnConfirmStageTimeDelay">
+                         <property name="font">
+                          <font>
+                           <family>微软雅黑</family>
+                           <bold>false</bold>
+                          </font>
+                         </property>
+                         <property name="text">
+                          <string>确定</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QFrame" name="frameStagePresetPanel">
+               <property name="frameShape">
+                <enum>QFrame::Shape::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Shadow::Raised</enum>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_15">
+                <item>
+                 <widget class="QGroupBox" name="groupBoxPowerPresetsStage">
+                  <property name="title">
+                   <string>电控平台与功率预设置</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_PowerPresetsStage">
+                   <item>
+                    <widget class="QTableWidget" name="tableWidgetPowerPresetsStage">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>150</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <pointsize>9</pointsize>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="editTriggers">
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
+                     </property>
+                     <property name="alternatingRowColors">
+                      <bool>true</bool>
+                     </property>
+                     <property name="columnCount">
+                      <number>6</number>
+                     </property>
+                     <attribute name="horizontalHeaderDefaultSectionSize">
+                      <number>100</number>
+                     </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>旋转台角度(deg)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>位移台位置(mm)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>种子源泵(mA)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>FOPO泵(A)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>Stokes泵(mA)</string>
+                      </property>
+                     </column>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_PowerPresetButtonsStage">
+                     <item>
+                      <widget class="QPushButton" name="btnAddPowerPresetRowStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>100</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>添加预设行</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnClearPowerPresetsStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>100</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>清空所有</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveUpPowerPresetStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>上移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveDownPowerPresetStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>下移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDeletePowerPresetStage">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>删除</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacerPowerButtonsStage">
+                       <property name="orientation">
+                        <enum>Qt::Orientation::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBoxDelayPresetsNew">
+                  <property name="title">
+                   <string>延迟线预设置</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignmentFlag::AlignCenter</set>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_DelayPresets">
+                   <item>
+                    <widget class="QTableWidget" name="tableWidgetDelayPresets">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>150</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <pointsize>9</pointsize>
+                       <bold>true</bold>
+                      </font>
+                     </property>
+                     <property name="editTriggers">
+                      <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
+                     </property>
+                     <property name="alternatingRowColors">
+                      <bool>true</bool>
+                     </property>
+                     <property name="columnCount">
+                      <number>3</number>
+                     </property>
+                     <attribute name="horizontalHeaderDefaultSectionSize">
+                      <number>100</number>
+                     </attribute>
+                     <column>
+                      <property name="text">
+                       <string>序号</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>旋转台角度(deg)</string>
+                      </property>
+                     </column>
+                     <column>
+                      <property name="text">
+                       <string>延迟时间(PS)</string>
+                      </property>
+                     </column>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_DelayPresetButtons">
+                     <item>
+                      <widget class="QPushButton" name="btnAddDelayPresetRow">
+                       <property name="minimumSize">
+                        <size>
+                         <width>100</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>添加预设行</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnClearDelayPresets">
+                       <property name="minimumSize">
+                        <size>
+                         <width>100</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>清空所有</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveUpDelayPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>上移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnMoveDownDelayPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>下移</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDeleteDelayPreset">
+                       <property name="minimumSize">
+                        <size>
+                         <width>80</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="font">
+                        <font>
+                         <family>微软雅黑</family>
+                         <bold>false</bold>
+                        </font>
+                       </property>
+                       <property name="text">
+                        <string>删除</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacerDelayButtons">
+                       <property name="orientation">
+                        <enum>Qt::Orientation::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QWidget" name="widgetStageConfirmButton" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_64">
+                   <item>
+                    <spacer name="horizontalSpacerStageLeft">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="labelStageTimeInterval">
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>时间间隔:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="spinBoxStageTimeInterval">
+                     <property name="suffix">
+                      <string> 秒</string>
+                     </property>
+                     <property name="minimum">
+                      <number>1</number>
+                     </property>
+                     <property name="maximum">
+                      <number>3600</number>
+                     </property>
+                     <property name="value">
+                      <number>2</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                    <widget class="QPushButton" name="btnConfirmStagePreset">
+                     <property name="minimumSize">
+                      <size>
+                       <width>100</width>
+                       <height>30</height>
+                      </size>
+                     </property>
+                     <property name="font">
+                      <font>
+                       <family>微软雅黑</family>
+                       <bold>false</bold>
+                      </font>
+                     </property>
+                     <property name="text">
+                      <string>开始执行</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacerStageRight">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="verticalSpacer_2">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     <item><widget class="QFrame" name="frameRightPanel"><property name="frameShape"><enum>QFrame::Shape::StyledPanel</enum></property><property name="frameShadow"><enum>QFrame::Shadow::Raised</enum></property><property name="minimumSize"><size><width>600</width><height>0</height></size></property><layout class="QVBoxLayout" name="verticalLayout_rightPanel"><item><widget class="QLabel" name="labelSpectrumTitle"><property name="text"><string>光谱测量显示</string></property><property name="styleSheet"><string>font-size: 14pt; font-weight: bold; padding: 5px;</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item>     <item>
+      <widget class="QGroupBox" name="groupBoxFOPOSpectrum">
+       <property name="title">
+        <string>FOPO路光谱仪</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_FOPOSpectrum">
+        <item>
+         <widget class="QWidget" name="chartWidgetFOPO" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>300</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_chartFOPO">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_FOPOControls">
+          <item>
+           <widget class="QPushButton" name="btnSingleMeasureFOPO">
+            <property name="text">
+             <string>单次测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnContinuousMeasureFOPO">
+            <property name="text">
+             <string>持续测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnStopMeasureFOPO">
+            <property name="text">
+             <string>停止测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnSavePlotFOPO">
+            <property name="text">
+             <string>保存数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnResetViewFOPO">
+            <property name="text">
+             <string>重置视图</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClearPlotFOPO">
+            <property name="text">
+             <string>清除数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnShowPeaksFOPO">
+            <property name="text">
+             <string>峰值检测</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBoxStokesSpectrum">
+       <property name="title">
+        <string>Stokes路光谱仪</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_StokesSpectrum">
+        <item>
+         <widget class="QWidget" name="chartWidgetStokes" native="true">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>300</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_chartStokes">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_StokesControls">
+          <item>
+           <widget class="QPushButton" name="btnSingleMeasureStokes">
+            <property name="text">
+             <string>单次测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnContinuousMeasureStokes">
+            <property name="text">
+             <string>持续测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnStopMeasureStokes">
+            <property name="text">
+             <string>停止测量</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnSavePlotStokes">
+            <property name="text">
+             <string>保存数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnResetViewStokes">
+            <property name="text">
+             <string>重置视图</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnClearPlotStokes">
+            <property name="text">
+             <string>清除数据</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnShowPeaksStokes">
+            <property name="text">
+             <string>峰值检测</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item></layout></widget></item></layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1492</width>
+     <height>18</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar" />
+  <!-- 功率预设编辑弹窗 -->
+  <widget class="QDialog" name="dialogEditPowerPresets">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>700</width>
+     <height>400</height>
+    </rect>
+   </property>
+   <property name="windowTitle">
+    <string>编辑光源功率预设</string>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_EditPowerPresets">
+    <item>
+     <widget class="QTableWidget" name="tableWidgetEditPowerPresets">
+      <property name="font">
+       <font>
+        <family>微软雅黑</family>
+        <pointsize>9</pointsize>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="columnCount">
+       <number>6</number>
+      </property>
+      <attribute name="horizontalHeaderDefaultSectionSize">
+       <number>100</number>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>序号</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>振镜起始(deg)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>振镜结束(deg)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>种子源泵(mA)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>FOPO泵(A)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Stokes泵(mA)</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_EditPowerButtons">
+      <item>
+       <widget class="QPushButton" name="btnAddPowerRow">
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnDeletePowerRow">
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacerEditPower">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnSavePowerPresets">
+        <property name="text">
+         <string>保存</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnCancelPowerPresets">
+        <property name="text">
+         <string>取消</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <!-- 延迟线预设编辑弹窗 -->
+  <widget class="QDialog" name="dialogEditDelayPresetsGalvo">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>400</width>
+     <height>400</height>
+    </rect>
+   </property>
+   <property name="windowTitle">
+    <string>编辑延迟线预设</string>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_EditDelayPresetsGalvo">
+    <item>
+     <widget class="QTableWidget" name="tableWidgetEditDelayPresetsGalvo">
+      <property name="font">
+       <font>
+        <family>微软雅黑</family>
+        <pointsize>9</pointsize>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::EditTrigger::AllEditTriggers</set>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="columnCount">
+       <number>3</number>
+      </property>
+      <attribute name="horizontalHeaderDefaultSectionSize">
+       <number>100</number>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>序号</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>振镜角度(deg)</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>延迟时间(PS)</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_EditDelayButtonsGalvo">
+      <item>
+       <widget class="QPushButton" name="btnAddDelayRowGalvo">
+        <property name="text">
+         <string>+</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnDeleteDelayRowGalvo">
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacerEditDelayGalvo">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnSaveDelayPresetsGalvo">
+        <property name="text">
+         <string>保存</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnCancelDelayPresetsGalvo">
+        <property name="text">
+         <string>取消</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources />
+ <connections />
+</ui>
