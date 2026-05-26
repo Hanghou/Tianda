@@ -37,62 +37,41 @@ public:
      */
     void setDeviceId(quint8 id) { m_deviceId = id; }
     
-    // ========== 延时线控制功能 ==========
-    
+    // ========== 延时线控制功能（协议：FC ID FUNC P1 P2 P3 FE）==========
+
     /**
      * @brief 设置延迟值（绝对位置）
-     * @param delayPS 延迟值（PS，可以有小数，如100.5）
+     * @param delayPS 目标延迟值（PS），换算规则：PS×1000→3字节大端
      * @return 成功返回true
      */
     bool setDelay(float delayPS);
-    
+
     /**
-     * @brief 增加延迟
-     * @param delayPS 增加的延迟值（PS）
-     * @return 成功返回true
-     */
-    bool increaseDelay(float delayPS);
-    
-    /**
-     * @brief 减小延迟
-     * @param delayPS 减小的延迟值（PS）
-     * @return 成功返回true
-     */
-    bool decreaseDelay(float delayPS);
-    
-    /**
-     * @brief 归零
+     * @brief 归零（功能码 0x07）
      * @return 成功返回true
      */
     bool home();
-    
+
     /**
-     * @brief 停止运动
+     * @brief 停止运动（功能码 0x0B）
      * @return 成功返回true
      */
     bool stop();
-    
+
     /**
-     * @brief 查询当前位置
+     * @brief 查询当前位置（功能码 0x0E）
      * @return 成功返回true
      */
     bool queryPosition();
-    
+
     /**
-     * @brief 保存配置到EEPROM
-     * @return 成功返回true
-     */
-    bool saveToEEPROM();
-    
-    /**
-     * @brief 获取当前延迟值
+     * @brief 获取当前延迟值（本地缓存）
      * @return 当前延迟值（PS）
      */
     float getCurrentDelay() const;
-    
+
     /**
      * @brief 是否在运动
-     * @return 运动中返回true
      */
     bool isMoving() const;
 

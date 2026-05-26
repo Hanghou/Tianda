@@ -13,15 +13,17 @@ struct PowerPreset {
     QString name;                  // 预设名称（可选）
     float galvoAngleStart;         // 振镜角度起始值 (deg)
     float galvoAngleEnd;           // 振镜角度结束值 (deg)
-    float seedPumpCurrent;         // 种子源泵电流 (mA)
-    float fopoPumpCurrent;         // FOPO泵电流 (A)
-    float stokesPumpCurrent;       // Stokes泵电流 (mA)
-    
+    float seedPumpCurrent;         // 种子源泵电流 (mA) - OHLD pumpIndex=0
+    float fopoPumpCurrent;         // pump路预放泵电流 (mA) - OHLD pumpIndex=1
+    float mainPumpCurrent;         // pump路主级泵电流 (mA) - OHLD pumpIndex=2
+    float stokesPumpCurrent;       // Stokes泵电流 (mA) - OHLD pumpIndex=3
+
     PowerPreset()
         : galvoAngleStart(0.0f)
         , galvoAngleEnd(0.0f)
         , seedPumpCurrent(0.0f)
         , fopoPumpCurrent(0.0f)
+        , mainPumpCurrent(0.0f)
         , stokesPumpCurrent(0.0f)
     {}
 };
@@ -81,15 +83,17 @@ struct StagePowerPreset {
     QString name;                  // 预设名称（可选）
     float stageAngle;              // 旋转台角度 (deg)
     float stagePosition;           // 位移台位置 (mm)
-    float seedPumpCurrent;         // 种子源泵电流 (mA)
-    float fopoPumpCurrent;         // FOPO泵电流 (A)
-    float stokesPumpCurrent;       // Stokes泵电流 (mA)
-    
+    float seedPumpCurrent;         // 种子源泵电流 (mA) - OHLD pumpIndex=0
+    float fopoPumpCurrent;         // pump路预放泵电流 (mA) - OHLD pumpIndex=1
+    float mainPumpCurrent;         // pump路主级泵电流 (mA) - OHLD pumpIndex=2
+    float stokesPumpCurrent;       // Stokes泵电流 (mA) - OHLD pumpIndex=3
+
     StagePowerPreset()
         : stageAngle(0.0f)
         , stagePosition(0.0f)
         , seedPumpCurrent(0.0f)
         , fopoPumpCurrent(0.0f)
+        , mainPumpCurrent(0.0f)
         , stokesPumpCurrent(0.0f)
     {}
 };
@@ -103,10 +107,36 @@ struct StagePowerPresetGroup {
     int timeInterval;              // 时间间隔（秒）
     QString description;           // 描述
     QDateTime createTime;          // 创建时间
-    
+
     StagePowerPresetGroup()
         : timeInterval(1)
         , createTime(QDateTime::currentDateTime())
+    {}
+};
+
+/**
+ * @brief 波长调谐预设结构（位移台页统一表）
+ * 整合原有的功率预设和延迟线预设为一行数据
+ */
+struct WavelengthTuningPreset {
+    float wavelength;              // 波长（mm）
+    float stagePositions;          // 两个旋转平台位置
+    float delayLine1;              // 延迟线一
+    float delayLine2;              // 延迟线二
+    float mainPumpPower;           // pump路主级泵功率（mW）
+    float seedPumpPower;           // 种子源泵功率（mW）
+    float stokesPumpPower;         // Stokes路泵功率（mW）
+    float preampPumpPower;         // pump路预放泵功率（mW）
+
+    WavelengthTuningPreset()
+        : wavelength(0.0f)
+        , stagePositions(0.0f)
+        , delayLine1(0.0f)
+        , delayLine2(0.0f)
+        , mainPumpPower(0.0f)
+        , seedPumpPower(0.0f)
+        , stokesPumpPower(0.0f)
+        , preampPumpPower(0.0f)
     {}
 };
 

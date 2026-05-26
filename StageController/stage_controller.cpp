@@ -2,23 +2,40 @@
 #include <QDebug>
 #include <QThread>
 
+// ===================================================================
+// Thorlabs ELLx 双台位移台控制器（双串口聚合）实现
+// ===================================================================
+
 StageController::StageController(QObject *parent)
     : DeviceBase(parent)
-    , m_serialPort(new SerialPortBase(this))
-    , m_baudRate(9600)
-    , m_address(0)
-    , m_currentPosition(0)
+    , m_serial1(new SerialPortBase(this))
+    , m_serial2(new SerialPortBase(this))
+    , m_baudRate1(9600)
+    , m_baudRate2(9600)
+    , m_pendingMove1(false)
+    , m_pendingMove2(false)
 {
-    setDeviceName("Thorlabs位移台");
-    
-    QObject::connect(m_serialPort, &SerialPortBase::dataReceived,
-                     this, &StageController::onDataReceived);
-    QObject::connect(m_serialPort, &SerialPortBase::connected,
-                     this, &StageController::onSerialConnected);
-    QObject::connect(m_serialPort, &SerialPortBase::disconnected,
-                     this, &StageController::onSerialDisconnected);
-    QObject::connect(m_serialPort, &SerialPortBase::errorOccurred,
-                     this, &StageController::onSerialError);
+    setDeviceName("Thorlabs ELLx 双台位移台（双串口）");
+
+    // ----- 串口1信号 → 槽 -----
+    QObject::connect(m_serial1, &SerialPortBase::dataReceived,
+                     this, &StageController::onSerial1DataReceived);
+    QObject::connect(m_serial1, &SerialPortBase::connected,
+                     this, &StageController::onSerial1Connected);
+    QObject::connect(m_serial1, &SerialPortBase::disconnected,
+                     this, &StageController::onSerial1Disconnected);
+    QObject::connect(m_serial1, &SerialPortBase::errorOccurred,
+                     this, &StageController::onSerial1Error);
+
+    // ----- 串口2信号 → 槽 -----
+    QObject::connect(m_serial2, &SerialPortBase::dataReceived,
+                     this, &StageController::onSerial2DataReceived);
+    QObject::connect(m_serial2, &SerialPortBase::connected,
+                     this, &StageController::onSerial2Connected);
+    QObject::connect(m_serial2, &SerialPortBase::disconnected,
+                     this, &StageController::onSerial2Disconnected);
+    QObject::connect(m_serial2, &SerialPortBase::errorOccurred,
+                     this, &StageController::onSerial2Error);
 }
 
 StageController::~StageController()
@@ -26,310 +43,421 @@ StageController::~StageController()
     disconnect();
 }
 
+// ========== 基类接口 ==========
+
 bool StageController::connect()
 {
-    if (m_portName.isEmpty()) {
-        setError("串口名称未设置");
-        return false;
+    // 适用于"先调用 openPort1/2 设置好端口，再调用基类 connect()"的场景
+    bool ok = true;
+    if (!m_portName1.isEmpty() && !m_serial1->isOpen()) {
+        ok &= openPort1(m_portName1, m_baudRate1);
     }
-    
-    return openPort(m_portName, m_baudRate);
+    if (!m_portName2.isEmpty() && !m_serial2->isOpen()) {
+        ok &= openPort2(m_portName2, m_baudRate2);
+    }
+    return ok;
 }
 
 void StageController::disconnect()
 {
-    if (m_serialPort->isOpen()) {
-        m_serialPort->closePort();
-        setStatus(DeviceStatus::Disconnected);
-    }
+    closePort1();
+    closePort2();
+    setStatus(DeviceStatus::Disconnected);
 }
 
 bool StageController::isConnected() const
 {
-    return m_serialPort->isOpen();
+    return isConnected1() && isConnected2();
 }
 
 QString StageController::getDeviceInfo() const
 {
-    return QString("%1 (串口: %2, 波特率: %3, 地址: %4)")
-           .arg(m_deviceName)
-           .arg(m_portName)
-           .arg(m_baudRate)
-           .arg(m_address);
+    return QString("Thorlabs ELLx 双台 [台1: 串口=%1, 波特率=%2, ppu=%3 | "
+                   "台2: 串口=%4, 波特率=%5, ppu=%6]")
+           .arg(m_portName1)
+           .arg(m_baudRate1)
+           .arg(m_info1.pulsePerUnit, 0, 'f', 2)
+           .arg(m_portName2)
+           .arg(m_baudRate2)
+           .arg(m_info2.pulsePerUnit, 0, 'f', 2);
 }
 
-bool StageController::openPort(const QString &portName, qint32 baudRate,
-                              QSerialPort::DataBits dataBits,
-                              QSerialPort::Parity parity,
-                              QSerialPort::StopBits stopBits)
+// ========== 双串口连接 ==========
+
+bool StageController::openPort1(const QString &portName, qint32 baudRate,
+                                QSerialPort::DataBits dataBits,
+                                QSerialPort::Parity parity,
+                                QSerialPort::StopBits stopBits)
 {
-    m_portName = portName;
-    m_baudRate = baudRate;
-    
+    m_portName1 = portName;
+    m_baudRate1 = baudRate;
+
     const int MAX_RETRY = 3;
     for (int i = 0; i < MAX_RETRY; i++) {
-        if (m_serialPort->openPort(portName, baudRate, dataBits, parity, stopBits)) {
-            qDebug() << "位移台连接成功:" << portName;
+        if (m_serial1->openPort(portName, baudRate, dataBits, parity, stopBits)) {
+            qDebug() << "位移台1 串口打开成功:" << portName;
             return true;
         }
-        
         if (i < MAX_RETRY - 1) {
-            qDebug() << "位移台连接失败，重试中..." << (i + 1);
-            QThread::msleep(1000);
+            qDebug() << "位移台1 串口打开失败，重试..." << (i + 1);
+            QThread::msleep(500);
         }
     }
-    
-    setError(QString("位移台连接失败: 无法打开串口 %1").arg(portName));
+    setError(QString("无法打开位移台1串口 %1").arg(portName));
     return false;
 }
 
-void StageController::onDataReceived(const QByteArray &data)
+bool StageController::openPort2(const QString &portName, qint32 baudRate,
+                                QSerialPort::DataBits dataBits,
+                                QSerialPort::Parity parity,
+                                QSerialPort::StopBits stopBits)
 {
-    qDebug() << "位移台接收数据:" << data.toHex(' ');
-    
-    // 添加到接收缓冲区
-    m_receiveBuffer.append(data);
-    
-    // 检查是否包含完整的响应（以\r\n结尾）
-    if (m_receiveBuffer.contains('\n')) {
-        parseResponse(m_receiveBuffer);
-        m_receiveBuffer.clear();
+    m_portName2 = portName;
+    m_baudRate2 = baudRate;
+
+    const int MAX_RETRY = 3;
+    for (int i = 0; i < MAX_RETRY; i++) {
+        if (m_serial2->openPort(portName, baudRate, dataBits, parity, stopBits)) {
+            qDebug() << "位移台2 串口打开成功:" << portName;
+            return true;
+        }
+        if (i < MAX_RETRY - 1) {
+            qDebug() << "位移台2 串口打开失败，重试..." << (i + 1);
+            QThread::msleep(500);
+        }
     }
-    
+    setError(QString("无法打开位移台2串口 %1").arg(portName));
+    return false;
+}
+
+void StageController::closePort1()
+{
+    if (m_serial1->isOpen()) m_serial1->closePort();
+}
+
+void StageController::closePort2()
+{
+    if (m_serial2->isOpen()) m_serial2->closePort();
+}
+
+bool StageController::isConnected1() const { return m_serial1->isOpen(); }
+bool StageController::isConnected2() const { return m_serial2->isOpen(); }
+
+// ========== 串口事件槽 ==========
+
+void StageController::onSerial1DataReceived(const QByteArray &data)
+{
+    m_recvBuf1.append(data);
+    while (m_recvBuf1.contains('\n')) {
+        int idx = m_recvBuf1.indexOf('\n');
+        QByteArray line = m_recvBuf1.left(idx + 1);
+        m_recvBuf1.remove(0, idx + 1);
+
+        QString resp = QString::fromLatin1(line).trimmed();
+        if (!resp.isEmpty()) {
+            qDebug() << "位移台1 收到:" << resp;
+            parseLine(1, resp);
+        }
+    }
     emit dataReady(data);
 }
 
-void StageController::onSerialConnected()
+void StageController::onSerial2DataReceived(const QByteArray &data)
 {
-    setStatus(DeviceStatus::Connected);
-    emit connected();
-    qDebug() << "位移台已连接";
-}
+    m_recvBuf2.append(data);
+    while (m_recvBuf2.contains('\n')) {
+        int idx = m_recvBuf2.indexOf('\n');
+        QByteArray line = m_recvBuf2.left(idx + 1);
+        m_recvBuf2.remove(0, idx + 1);
 
-void StageController::onSerialDisconnected()
-{
-    setStatus(DeviceStatus::Disconnected);
-    emit disconnected();
-    qDebug() << "位移台已断开";
-}
-
-void StageController::onSerialError(const QString &error)
-{
-    setError(error);
-    qDebug() << "位移台错误:" << error;
-}
-
-QByteArray StageController::buildCommand(const QString &cmd, const QString &param)
-{
-    // Thorlabs Elliptec协议格式
-    // 格式: 地址(0-F) + 命令(2字符) + 参数(可选)
-    // 例如: "0ho0" (地址0, home命令, 顺时针)
-    
-    QString addressStr = QString::number(m_address, 16).toUpper();
-    if (m_address > 9) {
-        addressStr = QString(QChar('A' + m_address - 10));
-    }
-    
-    QString command = addressStr + cmd;
-    if (!param.isEmpty()) {
-        command += param;
-    }
-    
-    qDebug() << "发送命令:" << command;
-    return command.toLatin1();
-}
-
-bool StageController::parseResponse(const QByteArray &response)
-{
-    // Thorlabs Elliptec响应格式
-    // GS: 地址 + "GS" + 状态码(2字符)
-    // PO: 地址 + "PO" + 位置(8字符十六进制)
-    // IN: 地址 + "IN" + 设备信息
-    
-    if (response.isEmpty()) {
-        return false;
-    }
-    
-    QString resp = QString::fromLatin1(response).trimmed();
-    qDebug() << "解析响应:" << resp;
-    
-    if (resp.length() < 3) {
-        return false;
-    }
-    
-    // 提取命令类型（第2-3个字符）
-    QString cmdType = resp.mid(1, 2);
-    
-    if (cmdType == "GS") {
-        // 状态响应
-        if (resp.length() >= 5) {
-            QString statusCode = resp.mid(3, 2);
-            qDebug() << "状态码:" << statusCode;
-            
-            if (statusCode == "00") {
-                qDebug() << "设备状态: OK";
-                return true;
-            } else {
-                qDebug() << "设备错误码:" << statusCode;
-                setError(QString("设备错误: %1").arg(statusCode));
-                return false;
-            }
+        QString resp = QString::fromLatin1(line).trimmed();
+        if (!resp.isEmpty()) {
+            qDebug() << "位移台2 收到:" << resp;
+            parseLine(2, resp);
         }
-    } else if (cmdType == "PO") {
-        // 位置响应
-        if (resp.length() >= 11) {
-            QString posHex = resp.mid(3, 8);
-            bool ok;
-            m_currentPosition = posHex.toLong(&ok, 16);
-            if (ok) {
-                qDebug() << "当前位置(脉冲):" << m_currentPosition;
-                emit positionChanged(m_currentPosition);
-                emit moveCompleted();
-                return true;
-            }
-        }
-    } else if (cmdType == "IN") {
-        // 设备信息响应
-        qDebug() << "设备信息:" << resp;
-        emit deviceInfoReceived(resp);
-        return true;
     }
-    
-    return false;
+    emit dataReady(data);
 }
 
-// ========== 位置转换函数 ==========
-
-qint32 StageController::positionToPulses(float position, bool isRotation)
+void StageController::onSerial1Connected()
 {
-    if (isRotation) {
-        // 旋转台: ELL14 = 262144 pulses/revolution
-        // 角度转脉冲: pulses = (angle / 360.0) * 262144
-        return static_cast<qint32>((position / 360.0) * 262144.0);
-    } else {
-        // 直线台: ELL17/ELL20 = 2048 pulses/mm
-        // 距离转脉冲: pulses = distance * 2048
-        return static_cast<qint32>(position * 2048.0);
-    }
+    emit stage1Connected();
+    if (isConnected()) setStatus(DeviceStatus::Connected);
+    qDebug() << "位移台1 已连接";
 }
 
-float StageController::pulsesToPosition(qint32 pulses, bool isRotation)
+void StageController::onSerial1Disconnected()
 {
-    if (isRotation) {
-        // 脉冲转角度: angle = (pulses / 262144.0) * 360.0
-        return (pulses / 262144.0) * 360.0;
-    } else {
-        // 脉冲转距离: distance = pulses / 2048.0
-        return pulses / 2048.0;
+    emit stage1Disconnected();
+    if (!isConnected1() && !isConnected2()) {
+        setStatus(DeviceStatus::Disconnected);
     }
+    qDebug() << "位移台1 已断开";
 }
 
-// ========== 控制命令实现 ==========
-
-bool StageController::home(quint8 direction)
+void StageController::onSerial1Error(const QString &error)
 {
-    if (!isConnected()) {
-        setError("设备未连接");
+    setError(QString("位移台1 错误: %1").arg(error));
+    qDebug() << "位移台1 错误:" << error;
+}
+
+void StageController::onSerial2Connected()
+{
+    emit stage2Connected();
+    if (isConnected()) setStatus(DeviceStatus::Connected);
+    qDebug() << "位移台2 已连接";
+}
+
+void StageController::onSerial2Disconnected()
+{
+    emit stage2Disconnected();
+    if (!isConnected1() && !isConnected2()) {
+        setStatus(DeviceStatus::Disconnected);
+    }
+    qDebug() << "位移台2 已断开";
+}
+
+void StageController::onSerial2Error(const QString &error)
+{
+    setError(QString("位移台2 错误: %1").arg(error));
+    qDebug() << "位移台2 错误:" << error;
+}
+
+// ========== 帧发送 ==========
+
+bool StageController::sendFrame1(const QByteArray &frame)
+{
+    qint64 written = m_serial1->writeData(frame);
+    if (written != frame.size()) {
+        setError("位移台1 发送指令失败");
         return false;
     }
-    
-    // 构建home命令: 地址 + "ho" + 方向(0=CW, 1=CCW)
+    qDebug() << "位移台1 发送:" << QString::fromLatin1(frame).trimmed();
+    return true;
+}
+
+bool StageController::sendFrame2(const QByteArray &frame)
+{
+    qint64 written = m_serial2->writeData(frame);
+    if (written != frame.size()) {
+        setError("位移台2 发送指令失败");
+        return false;
+    }
+    qDebug() << "位移台2 发送:" << QString::fromLatin1(frame).trimmed();
+    return true;
+}
+
+// ========== 响应解析 ==========
+
+void StageController::parseLine(int stageIndex, const QString &line)
+{
+    if (line.length() < 3) return;
+
+    // 单台协议：响应行首字符为地址（固定 '0'），第1-2字符为命令类型
+    QString cmdType = line.mid(1, 2).toUpper();
+
+    if (cmdType == STAGE_RESP_INFO) {
+        parseInfoLine(stageIndex, line);
+    } else if (cmdType == STAGE_RESP_STATUS) {
+        parseStatusLine(stageIndex, line);
+    } else if (cmdType == STAGE_RESP_POSITION) {
+        parsePositionLine(stageIndex, line);
+    } else {
+        qDebug() << QString("位移台%1 未知响应:").arg(stageIndex) << cmdType;
+    }
+}
+
+void StageController::parseInfoLine(int stageIndex, const QString &resp)
+{
+    // 0IN<type(2)><serial(8)><year(4)><fw(2)><hw(2)><travel(4)><pulsePerUnit(8)>
+    if (resp.length() < 31) {
+        qDebug() << "IN 响应长度不足:" << resp;
+        return;
+    }
+    bool ok;
+    qint32 ppu = resp.mid(23, 8).toLong(&ok, 16);
+    if (!ok || ppu <= 0) {
+        qDebug() << "IN 响应 pulsePerUnit 解析失败，使用默认值 2048";
+        ppu = 2048;
+    }
+
+    if (stageIndex == 1) {
+        m_info1.pulsePerUnit = static_cast<double>(ppu);
+        m_info1.valid = true;
+        qDebug() << "台1 pulsePerUnit =" << m_info1.pulsePerUnit;
+    } else {
+        m_info2.pulsePerUnit = static_cast<double>(ppu);
+        m_info2.valid = true;
+        qDebug() << "台2 pulsePerUnit =" << m_info2.pulsePerUnit;
+    }
+    emit deviceInfoReceived(resp);
+}
+
+void StageController::parseStatusLine(int stageIndex, const QString &resp)
+{
+    // GS 响应：0GS<status(2)>
+    if (resp.length() < 5) return;
+    QString statusCode = resp.mid(3, 2);
+    qDebug() << QString("台%1 状态码: %2").arg(stageIndex).arg(statusCode);
+    if (statusCode != "00") {
+        setError(QString("台%1 设备错误: %2").arg(stageIndex).arg(statusCode));
+    }
+}
+
+void StageController::parsePositionLine(int stageIndex, const QString &resp)
+{
+    // PO 响应：0PO<pos(8)>
+    if (resp.length() < 11) return;
+    bool ok;
+    quint32 raw = resp.mid(3, 8).toULong(&ok, 16);
+    if (!ok) return;
+    qint32 pulses = static_cast<qint32>(raw);
+
+    // 仅在本次 PO 是 moveAbsoluteDual 的回应时（pending 为 true）才参与
+    // moveCompletedDual 的判定，避免普通 queryPositionDual 误触发。
+    bool wasPending = false;
+    if (stageIndex == 1) {
+        wasPending = m_pendingMove1;
+        m_status1.positionPulses = pulses;
+        qDebug() << "台1 位置(脉冲):" << pulses;
+        emit positionChanged1(pulses);
+        if (m_pendingMove1) m_pendingMove1 = false;
+    } else {
+        wasPending = m_pendingMove2;
+        m_status2.positionPulses = pulses;
+        qDebug() << "台2 位置(脉冲):" << pulses;
+        emit positionChanged2(pulses);
+        if (m_pendingMove2) m_pendingMove2 = false;
+    }
+
+    // 本次 PO 来源于一次 dual 移动，且两台都已就绪，则发射完成
+    if (wasPending && !m_pendingMove1 && !m_pendingMove2) {
+        emit moveCompletedDual();
+    }
+}
+
+// ========== 双台同步控制接口实现 ==========
+
+bool StageController::readDeviceInfoDual()
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
+
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_GET_INFO));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_GET_INFO));
+    return ok;
+}
+
+bool StageController::setMaxSpeedDual(qint32 speedPulses)
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
+
+    QString param = ellxPulsesToHex(speedPulses);
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_SET_SPEED, param));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_SET_SPEED, param));
+    qDebug() << "双台设置速度:" << speedPulses << "脉冲/s";
+    return ok;
+}
+
+bool StageController::moveAbsoluteDual(double positionMm)
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
+
+    // 台1 / 台2 各按自己的 pulsePerUnit 换算
+    double ppu1 = m_info1.valid ? m_info1.pulsePerUnit : 2048.0;
+    double ppu2 = m_info2.valid ? m_info2.pulsePerUnit : 2048.0;
+    qint32 pulses1 = ellxMmToPulses(positionMm, ppu1);
+    qint32 pulses2 = ellxMmToPulses(positionMm, ppu2);
+    QString param1 = ellxPulsesToHex(pulses1);
+    QString param2 = ellxPulsesToHex(pulses2);
+
+    m_pendingMove1 = true;
+    m_pendingMove2 = true;
+
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_MOVE_ABS, param1));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_MOVE_ABS, param2));
+
+    qDebug() << QString("双台绝对位移: %1 mm → 台1=%2脉冲, 台2=%3脉冲")
+                .arg(positionMm, 0, 'f', 3)
+                .arg(pulses1).arg(pulses2);
+
+    if (!ok) {
+        // 发送失败时清除挂起标志，避免误触发 moveCompletedDual
+        m_pendingMove1 = false;
+        m_pendingMove2 = false;
+    }
+    return ok;
+}
+
+bool StageController::queryStatusDual()
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_GET_STATUS));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_GET_STATUS));
+    return ok;
+}
+
+bool StageController::queryPositionDual()
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_GET_POS));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_GET_POS));
+    return ok;
+}
+
+bool StageController::stopDual()
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_STOP));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_STOP));
+    qDebug() << "双台停止";
+    // 停止时清除挂起标志
+    m_pendingMove1 = false;
+    m_pendingMove2 = false;
+    return ok;
+}
+
+bool StageController::homeDual(quint8 direction)
+{
+    if (!isConnected()) { setError("位移台未全部连接"); return false; }
     QString dirStr = QString::number(direction);
-    QByteArray cmd = buildCommand("ho", dirStr);
-    
-    if (m_serialPort->writeData(cmd)) {
-        qDebug() << "回零命令已发送";
-        return true;
-    } else {
-        setError("发送回零命令失败");
-        return false;
-    }
+    bool ok = true;
+    ok &= sendFrame1(ellxBuildFrame('0', STAGE_CMD_HOME, dirStr));
+    QThread::msleep(50);
+    ok &= sendFrame2(ellxBuildFrame('0', STAGE_CMD_HOME, dirStr));
+    qDebug() << "双台回零, 方向:" << direction;
+    return ok;
 }
 
-bool StageController::moveAbsolute(float position, bool isRotation)
+// ========== 单台调试接口 ==========
+
+bool StageController::moveAbsolute1(double positionMm)
 {
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 转换位置为脉冲数
-    qint32 pulses = positionToPulses(position, isRotation);
-    
-    // 构建moveAbsolute命令: 地址 + "ma" + 位置(8位十六进制)
-    QString posHex = QString("%1").arg(pulses, 8, 16, QChar('0')).toUpper();
-    QByteArray cmd = buildCommand("ma", posHex);
-    
-    if (m_serialPort->writeData(cmd)) {
-        qDebug() << "移动到绝对位置:" << position 
-                 << (isRotation ? "度" : "mm")
-                 << "(" << pulses << "脉冲)";
-        return true;
-    } else {
-        setError("发送移动命令失败");
-        return false;
-    }
+    if (!isConnected1()) { setError("位移台1 未连接"); return false; }
+    double ppu = m_info1.valid ? m_info1.pulsePerUnit : 2048.0;
+    qint32 pulses = ellxMmToPulses(positionMm, ppu);
+    QString param = ellxPulsesToHex(pulses);
+    return sendFrame1(ellxBuildFrame('0', STAGE_CMD_MOVE_ABS, param));
 }
 
-bool StageController::moveRelative(float distance, bool isRotation)
+bool StageController::moveAbsolute2(double positionMm)
 {
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 转换距离为脉冲数
-    qint32 pulses = positionToPulses(distance, isRotation);
-    
-    // 构建moveRelative命令: 地址 + "mr" + 距离(8位十六进制)
-    QString posHex = QString("%1").arg(pulses, 8, 16, QChar('0')).toUpper();
-    QByteArray cmd = buildCommand("mr", posHex);
-    
-    if (m_serialPort->writeData(cmd)) {
-        qDebug() << "相对移动:" << distance 
-                 << (isRotation ? "度" : "mm")
-                 << "(" << pulses << "脉冲)";
-        return true;
-    } else {
-        setError("发送移动命令失败");
-        return false;
-    }
+    if (!isConnected2()) { setError("位移台2 未连接"); return false; }
+    double ppu = m_info2.valid ? m_info2.pulsePerUnit : 2048.0;
+    qint32 pulses = ellxMmToPulses(positionMm, ppu);
+    QString param = ellxPulsesToHex(pulses);
+    return sendFrame2(ellxBuildFrame('0', STAGE_CMD_MOVE_ABS, param));
 }
 
-bool StageController::stop()
-{
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 构建stop命令: 地址 + "st"
-    QByteArray cmd = buildCommand("st");
-    
-    if (m_serialPort->writeData(cmd)) {
-        qDebug() << "停止命令已发送";
-        return true;
-    } else {
-        setError("发送停止命令失败");
-        return false;
-    }
-}
 
-bool StageController::requestDeviceInfo()
-{
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 构建info命令: 地址 + "in"
-    QByteArray cmd = buildCommand("in");
-    
-    if (m_serialPort->writeData(cmd)) {
-        qDebug() << "设备信息请求已发送";
-        return true;
-    } else {
-        setError("发送设备信息请求失败");
-        return false;
-    }
-}

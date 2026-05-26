@@ -13,7 +13,7 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
-#include "../LaserDriver/laser_driver.h"
+#include "../LaserDriver/ohld_protocol.h"
 #include "../Spectrometer/spectrometer.h"
 #include "../StageController/stage_controller.h"
 #include "../DelayLine/delay_line.h"
@@ -37,16 +37,6 @@ enum class PresetPageType {
 };
 
 /**
- * @brief 激光器设备类型枚举（用于代码复用）
- * 注意：三个激光器是完全独立的设备，各自有独立的 LaserDriver 实例
- */
-enum class LaserDeviceType {
-    Seed,     // 种子源激光器
-    FOPO,     // FOPO激光器
-    Stokes    // Stokes激光器
-};
-
-/**
  * @brief 主窗口类
  * 整合所有设备模块
  */
@@ -60,23 +50,29 @@ public:
 
 private slots:
     // 连接/断开槽函数
-    void on_btnConnectSeedLaser_clicked();
-    void on_btnDisconnectSeedLaser_clicked();
-    void on_btnConnectFOPOLaser_clicked();
-    void on_btnDisconnectFOPOLaser_clicked();
-    void on_btnConnectStokesLaser_clicked();
-    void on_btnDisconnectStokesLaser_clicked();
     void on_btnConnectSpectrometerFOPO_clicked();
     void on_btnDisconnectSpectrometerFOPO_clicked();
     void on_btnConnectSpectrometerStokes_clicked();
     void on_btnDisconnectSpectrometerStokes_clicked();
-    void on_btnConnectStage_clicked();
-    void on_btnDisconnectStage_clicked();
+    void on_btnConnectStage1_clicked();
+    void on_btnDisconnectStage1_clicked();
+    void on_btnConnectStage2_clicked();
+    void on_btnDisconnectStage2_clicked();
     void on_btnConnectGalvo_clicked();
     void on_btnDisconnectGalvo_clicked();
     void on_btnConnectDelay_clicked();
     void on_btnDisconnectDelay_clicked();
-    
+
+    // OHLD 四泵连接/断开槽函数
+    void on_btnConnectPump1_clicked();
+    void on_btnDisconnectPump1_clicked();
+    void on_btnConnectPump2_clicked();
+    void on_btnDisconnectPump2_clicked();
+    void on_btnConnectPump3_clicked();
+    void on_btnDisconnectPump3_clicked();
+    void on_btnConnectPump4_clicked();
+    void on_btnDisconnectPump4_clicked();
+
     // FOPO路光谱仪测量控制槽函数
     void on_btnSingleMeasureFOPO_clicked();
     void on_btnContinuousMeasureFOPO_clicked();
@@ -106,79 +102,76 @@ private slots:
     void on_btnShowPeaksStokes_clicked();  // 显示峰值检测窗口
     
     // 位移台控制槽函数
-    void on_btnConfirmStageAngle_clicked();     // 设置旋转台角度
-    void on_btnConfirmStagePosition_clicked();  // 设置直线台位置
-    void on_btnConfirmStageTimeDelay_clicked(); // 设置延时线延迟（位移台版）
-    void onStagePositionChanged(qint32 positionPulses);  // 位置改变
-    void onStageMoveCompleted();                // 移动完成
-    
+    void on_btnStageMoveAbsolute_clicked();        // 双台同步绝对位移
+    void on_btnConfirmStageAngle_clicked();        // 旧槽（保留兼容，转发）
+    void on_btnConfirmStagePosition_clicked();     // 旧槽（保留兼容，转发）
+    void on_btnConfirmStageTimeDelay_clicked();    // 旧单延迟线槽（保留兼容）
+    void on_btnConfirmStageDelayLine1_clicked();   // 设置延迟线1（位移台页）
+    void on_btnConfirmStageDelayLine2_clicked();   // 设置延迟线2（位移台页）
+    void onStage1PositionChanged(qint32 positionPulses);
+    void onStage2PositionChanged(qint32 positionPulses);
+    void onStageMoveCompletedDual();
+
     // 延时线控制槽函数
-    void on_btnConfirmTimeDelay_clicked();  // 设置延迟值（振镜版）
-    void onDelayChanged(float delayPS);     // 延迟值改变
+    void on_btnConnectDelay2_clicked();            // 连接延迟线2
+    void on_btnDisconnectDelay2_clicked();         // 断开延迟线2
+    void on_btnConfirmTimeDelay_clicked();         // 设置延迟值（振镜版）
+    void onDelayChanged(float delayPS);            // 延迟值改变（延迟线1）
+    void onDelay2Changed(float delayPS);           // 延迟值改变（延迟线2）
     
-    // 振镜角度控制槽函数
-    void on_btnConfirmGalvoAngle_clicked(); // 设置振镜角度
-    
-    // 泵功率设置槽函数 - 振镜页
-    void on_btnConfirmSeedPump_clicked();   // 确认种子源泵设置
-    void on_btnConfirmFOPOPump_clicked();   // 确认FOPO泵设置
-    void on_btnConfirmStokesPump_clicked(); // 确认Stokes泵设置
-    
-    // 泵功率设置槽函数 - 位移台页
-    void on_btnConfirmStageSeedPump_clicked();   // 确认种子源泵设置（位移台页）
-    void on_btnConfirmStageFOPOPump_clicked();   // 确认FOPO泵设置（位移台页）
-    void on_btnConfirmStageStokesPump_clicked(); // 确认Stokes泵设置（位移台页）
+    // 振镜打标控制槽函数（按 TCP/UDP 协议直连）
+    void on_rbGalvoShapePoint_toggled(bool checked);  // 切换图形为点
+    void on_rbGalvoShapeLine_toggled(bool checked);   // 切换图形为线
+    void on_rbGalvoShapeCircle_toggled(bool checked); // 切换图形为圆
+    void on_rbGalvoShapeArray_toggled(bool checked);  // 切换图形为多点阵列
+    void on_btnGalvoSetParam_clicked();               // 下发图形参数（仅参数，不打标）
+    void on_btnGalvoStart_clicked();                  // 开始打标
+    void on_btnGalvoStop_clicked();                   // 停止/复位
+    void on_btnGalvoPause_clicked();                  // 暂停
+    void on_btnGalvoContinue_clicked();               // 继续
+    void on_btnGalvoClearLog_clicked();               // 清空日志显示
+    void onGalvoMessageLog(const QString &msg);       // 振镜日志（来自 GalvoMirror::messageLog）
+    void onGalvoHeartbeatChanged(bool online);        // 心跳状态变化
+
+    // 泵功率设置槽函数 - 振镜页（OHLD 四泵，与位移台页统一）
+    void on_btnConfirmGalvoPump1_clicked();   // 种子源泵
+    void on_btnConfirmGalvoPump2_clicked();   // pump路预放泵
+    void on_btnConfirmGalvoPump3_clicked();   // pump路主级泵
+    void on_btnConfirmGalvoPump4_clicked();   // Stokes路泵
+
+    // 泵功率设置槽函数 - 位移台页（OHLD 四泵）
+    void on_btnConfirmStagePump1_clicked();   // 种子源泵
+    void on_btnConfirmStagePump2_clicked();   // pump路预放泵
+    void on_btnConfirmStagePump3_clicked();   // pump路主级泵
+    void on_btnConfirmStagePump4_clicked();   // Stokes路泵
     
     // 预设管理槽函数 - 振镜页（光源功率预设）
-    void on_btnLightPowerPreset_clicked();   // 光源功率预设置入口按钮（切换显示/隐藏）
-    void on_btnAddPowerPresetRow_clicked();      // 添加功率预设行
-    void on_btnClearPowerPresets_clicked();      // 清空所有功率预设
-    void on_btnMoveUpPowerPreset_clicked();      // 上移功率预设行
-    void on_btnMoveDownPowerPreset_clicked();    // 下移功率预设行
-    void on_btnDeletePowerPreset_clicked();      // 删除功率预设行
     void on_btnStartPowerExecution_clicked();    // 开始执行功率预设
     void on_btnStopPowerExecution_clicked();     // 停止执行功率预设
     void onPowerPresetDelayTimeout();            // 功率预设间隔定时器触发
     void on_btnConfirmDelayPreset_clicked();     // 确定按钮（振镜页底部执行按钮）
-    
+
     // 预设管理槽函数 - 振镜页（延迟线预设）
-    void on_btnDelayLinePreset_clicked();        // 延迟线预设置入口按钮（切换显示/隐藏）
-    void on_btnAddDelayPresetRowGalvo_clicked();      // 添加延迟预设行
-    void on_btnClearDelayPresetsGalvo_clicked();      // 清空所有延迟预设
-    void on_btnMoveUpDelayPresetGalvo_clicked();      // 上移延迟预设行
-    void on_btnMoveDownDelayPresetGalvo_clicked();    // 下移延迟预设行
-    void on_btnDeleteDelayPresetGalvo_clicked();      // 删除延迟预设行
     void on_btnStartDelayExecutionGalvo_clicked();    // 开始执行延迟预设
     void on_btnStopDelayExecutionGalvo_clicked();     // 停止执行延迟预设
     void onDelayPresetDelayTimeoutGalvo();            // 延迟预设间隔定时器触发
     
-    // 预设管理槽函数 - 位移台页（电控与功率预设）
-    void on_btnStagePowerPreset_clicked();       // 电控平台与功率预设置入口按钮（切换显示/隐藏）
-    void on_btnAddPowerPresetRowStage_clicked();      // 添加功率预设行
-    void on_btnClearPowerPresetsStage_clicked();      // 清空所有功率预设
-    void on_btnMoveUpPowerPresetStage_clicked();      // 上移功率预设行
-    void on_btnMoveDownPowerPresetStage_clicked();    // 下移功率预设行
-    void on_btnDeletePowerPresetStage_clicked();      // 删除功率预设行
-    void on_btnStartPowerExecutionStage_clicked();    // 开始执行功率预设
-    void on_btnStopPowerExecutionStage_clicked();     // 停止执行功率预设
-    void onPowerPresetDelayTimeoutStage();            // 功率预设间隔定时器触发
-    void on_btnConfirmStagePreset_clicked();          // 确定按钮（位移台页底部执行按钮）
-    
-    // 预设管理槽函数 - 位移台页（延迟线预设）
-    void on_btnStageDelayPreset_clicked();       // 延迟线预设置入口按钮（切换显示/隐藏）
-    void on_btnAddDelayPresetRow_clicked();      // 添加延迟预设行
-    void on_btnClearDelayPresets_clicked();      // 清空所有延迟预设
-    void on_btnMoveUpDelayPreset_clicked();      // 上移延迟预设行
-    void on_btnMoveDownDelayPreset_clicked();    // 下移延迟预设行
-    void on_btnDeleteDelayPreset_clicked();      // 删除延迟预设行
+    // 预设管理槽函数 - 位移台页（波长调谐，整合原电控与功率预设 + 延迟线预设）
+    void on_btnStartPowerExecutionStage_clicked();    // 开始执行波长调谐预设
+    void on_btnStopPowerExecutionStage_clicked();     // 停止执行波长调谐预设
+    void onPowerPresetDelayTimeoutStage();            // 波长调谐预设间隔定时器触发
+
+    // 位移台页扫描槽函数（暂留空，待实现）
+    void on_btnStageScanSetWavelength_clicked();      // 单点波长设置
+    void on_btnStageScanStart_clicked();              // 开始扫描
+    void on_btnStageScanStop_clicked();               // 停止扫描
+
+    // 预设管理槽函数 - 位移台页（延迟线预设 - 已整合到波长调谐）
     void on_btnStartDelayExecution_clicked();    // 开始执行延迟预设
     void on_btnStopDelayExecution_clicked();     // 停止执行延迟预设
     void onDelayPresetDelayTimeout();            // 延迟预设间隔定时器触发
     
     // 设备状态更新槽函数
-    void onSeedLaserStatusChanged(DeviceStatus status);
-    void onFOPOLaserStatusChanged(DeviceStatus status);
-    void onStokesLaserStatusChanged(DeviceStatus status);
     void onSpectrometerFOPOStatusChanged(DeviceStatus status);
     void onSpectrometerStokesStatusChanged(DeviceStatus status);
     void onStageStatusChanged(DeviceStatus status);
@@ -219,13 +212,12 @@ private:
     void updateStatusIndicator(class QLabel *indicator, DeviceStatus status);
     
     // 串口配置获取函数
-    SerialConfig getSeedLaserSerialConfig();
-    SerialConfig getFOPOLaserSerialConfig();
-    SerialConfig getStokesLaserSerialConfig();
     SerialConfig getSpectrometerFOPOSerialConfig();
     SerialConfig getSpectrometerStokesSerialConfig();
     SerialConfig getDelayLineSerialConfig();
-    SerialConfig getStageSerialConfig();
+    SerialConfig getDelayLineSerialConfig2();   // 延迟线2独立串口配置
+    SerialConfig getStageSerialConfig1();   // 位移台1串口配置
+    SerialConfig getStageSerialConfig2();   // 位移台2串口配置
     
     // 振镜网络配置获取函数
     QString getGalvoIPAddress();
@@ -256,23 +248,10 @@ private:
     
     // 预设管理辅助函数
     void initPresetTables();                     // 初始化预设表格
-    void addPowerPresetRow();                    // 添加功率预设行
-    void addPowerPresetRowStage();               // 添加功率预设行（位移台页）
-    void removePowerPresetRow(int row);          // 删除功率预设行
-    void removePowerPresetRowStage(int row);     // 删除功率预设行（位移台页）
-    
-    // 表格操作辅助函数
-    void moveRowUp(QTableWidget *table, int row);      // 上移行
-    void moveRowDown(QTableWidget *table, int row);    // 下移行
-    void deleteRow(QTableWidget *table, int row);      // 删除行
-    void swapRows(QTableWidget *table, int row1, int row2);  // 交换两行
-    void updateRowNumbers(QTableWidget *table);        // 更新序号
-    
-    // 预设置显示控制辅助函数
-    void updateGalvoConfirmButtonVisibility();         // 更新振镜页底部按钮显示状态
-    void updateStageConfirmButtonVisibility();         // 更新位移台页底部按钮显示状态
+
     QList<PowerPreset> loadPowerPresetsFromTable();  // 从表格加载功率预设
-    QList<StagePowerPreset> loadPowerPresetsFromTableStage();  // 从表格加载功率预设（位移台页）
+    QList<StagePowerPreset> loadPowerPresetsFromTableStage();  // 从表格加载功率预设（位移台页 - 旧，保留兼容）
+    QList<WavelengthTuningPreset> loadWavelengthTuningPresetsFromTableStage();  // 从波长调谐表加载预设
     void executePowerPreset(int index);          // 执行单个功率预设
     void executePowerPresetStage(int index);     // 执行单个功率预设（位移台页）
     void executeCombinedPresetGalvo(int index);  // 执行组合预设（振镜页：功率+延迟线）
@@ -281,8 +260,6 @@ private:
     void stopPowerPresetExecutionStage();        // 停止功率预设执行（位移台页）
     
     // 统一的延迟预设方法
-    void addDelayPresetRow(PresetPageType pageType);
-    void removeDelayPresetRow(PresetPageType pageType, int row);
     QList<DelayPreset> loadDelayPresetsFromTable(PresetPageType pageType);
     void executeDelayPreset(PresetPageType pageType, int index);
     void stopDelayPresetExecution(PresetPageType pageType);
@@ -293,19 +270,18 @@ protected:
 
 private:
     Ui::Integration *ui;
-    
-    // 连接管理窗口
-    QWidget *m_connectionManagerWidget;  // 连接管理独立窗口
-    
+
     // 设备模块
-    LaserDriver *m_seedLaserDriver;    // 种子源激光器
-    LaserDriver *m_fopoLaserDriver;    // FOPO激光器
-    LaserDriver *m_stokesLaserDriver;  // Stokes激光器
     Spectrometer *m_spectrometerFOPO;    // FOPO路光谱仪
     Spectrometer *m_spectrometerStokes;  // Stokes路光谱仪
     StageController *m_stageController;
     GalvoMirror *m_galvoMirror;        // 振镜控制卡
-    DelayLine *m_delayLine;
+    DelayLine *m_delayLine;            // 延迟线1（设备ID=0x01，振镜页 + 位移台页）
+    DelayLine *m_delayLine2;           // 延迟线2（设备ID=0x02，位移台页独立串口）
+
+    // OHLD 四泵：独立串口实例（位移台页泵功率控制）
+    SerialPortBase *m_ohldPumps[4];    // 四泵独立串口，索引0~3对应泵1~4
+    OhldPumpStatus  m_ohldStatus[4];   // 四泵状态缓存
     
     // 工具模块
     ConfigManager *m_configManager;
@@ -339,6 +315,14 @@ private:
     QValueAxis *m_axisXStokes;
     QValueAxis *m_axisYStokes;
     QDialog *m_chartMaximizedDialogStokes;
+
+    // 位移台页独立图表（_S 后缀，与振镜页同步显示）
+    QChartView *m_chartViewFOPO_S;
+    QChart *m_chartFOPO_S;
+    QLineSeries *m_seriesFOPO_S;
+    QChartView *m_chartViewStokes_S;
+    QChart *m_chartStokes_S;
+    QLineSeries *m_seriesStokes_S;
     
     // 峰值检测相关
     struct PeakData {
@@ -377,10 +361,12 @@ private:
     int m_delayPresetTimeIntervalGalvo;               // 延迟预设时间间隔（秒）（振镜页）
     int m_delayPresetTimeInterval;                    // 延迟预设时间间隔（秒）（位移台页）
     
-    // 预设执行相关 - 功率预设（位移台页）
-    class QTableWidget *m_powerPresetTableStage;      // 功率预设表格（位移台页）
+    // 预设执行相关 - 功率预设（位移台页）/ 波长调谐
+    class QTableWidget *m_powerPresetTableStage;      // 功率预设表格（位移台页 - 旧，保留兼容）
+    class QTableWidget *m_wavelengthTuningTable;      // 波长调谐表格（位移台页 - 新统一表）
     QTimer *m_powerPresetDelayTimerStage;             // 功率预设间隔定时器（位移台页）
     QList<StagePowerPreset> m_currentPowerPresetsStage;  // 当前执行的功率预设列表（位移台页）
+    QList<WavelengthTuningPreset> m_currentWavelengthTuningPresets;  // 当前执行的波长调谐预设列表
     int m_currentPowerPresetIndexStage;               // 当前执行的预设索引（位移台页）
     bool m_isPowerPresetExecutingStage;               // 是否正在执行功率预设（位移台页）
     int m_powerPresetTimeIntervalStage;               // 功率预设时间间隔（秒）（位移台页）
@@ -393,15 +379,47 @@ private:
     bool& isDelayPresetExecuting(PresetPageType pageType);
     int& getDelayPresetTimeInterval(PresetPageType pageType);
     
-    // 统一的激光器连接/断开方法（三个激光器是独立设备）
-    void connectLaser(LaserDeviceType type);
-    void disconnectLaser(LaserDeviceType type);
-    
-    // 统一的泵功率设置方法（每个泵只控制对应的激光器）
-    void setPumpCurrent(LaserDeviceType type, class QLineEdit *inputField, class QLineEdit *syncField = nullptr);
+    // OHLD 四泵统一控制方法（开启→设置电流→查询→刷新显示）
+    void setOhldPumpCurrent(int pumpIndex, float currentMA);
+    // OHLD 四泵静默控制：仅开启+设置电流，不弹窗、不查询、不刷新显示，
+    // 用于预设执行链路批量下发。返回 true 表示串口写入全部成功。
+    bool setOhldPumpCurrentSilent(int pumpIndex, float currentMA);
+    // OHLD 四泵统一连接/断开
+    void connectOhldPump(int pumpIndex);
+    void disconnectOhldPump(int pumpIndex);
+
+    // OHLD 四泵 UI 辅助查找
+    class QComboBox *ohldPumpPortCombo(int pumpIndex) const;
+    class QComboBox *ohldPumpBaudCombo(int pumpIndex) const;
+    class QLabel    *ohldPumpStatusLabel(int pumpIndex) const;
+
+    /**
+     * @brief 振镜角度到坐标映射（占位实现，需根据实际标定替换）
+     * @param angleDeg 角度（度）
+     * @param[out] x 振镜 X 坐标
+     * @param[out] y 振镜 Y 坐标
+     * @param[out] z 振镜 Z 坐标
+     */
+    void galvoAngleToCoord(float angleDeg, float &x, float &y, float &z) const;
     
     // 统一的延迟线设置方法
     void setDelayTime(class QLineEdit *inputField, class QLineEdit *syncField = nullptr);
+    // 双延迟线统一控制方法（归零→设置→查询）
+    void setDelayLineValue(DelayLine *device, float delayPS, const QString &label);
+    
+    // 编辑按钮槽函数
+    void on_btnEditPowerPresets_clicked();         // 编辑光源功率预设
+    void on_btnEditDelayPresetsGalvo_clicked();    // 编辑延迟线预设（振镜页）
+    void on_btnEditPowerPresetsStage_clicked();    // 编辑电控平台与功率预设（位移台页 - 旧，保留兼容）
+    void on_btnEditDelayPresets_clicked();         // 编辑延迟线预设（位移台页 - 旧，保留兼容）
+    void on_btnEditWavelengthTuningStage_clicked();  // 编辑波长调谐预设（位移台页 - 新统一入口）
+
+    // 编辑弹窗辅助方法
+    void showPowerPresetEditDialog();              // 显示功率预设编辑弹窗
+    void showDelayPresetEditDialogGalvo();         // 显示延迟预设编辑弹窗（振镜页）
+    void showPowerPresetEditDialogStage();         // 显示功率预设编辑弹窗（位移台页 - 旧，保留兼容）
+    void showDelayPresetEditDialog();              // 显示延迟预设编辑弹窗（位移台页 - 旧，保留兼容）
+    void showWavelengthTuningEditDialogStage();    // 显示波长调谐编辑弹窗（位移台页 - 新统一弹窗）
 };
 
 #endif // INTEGRATION_H

@@ -90,62 +90,20 @@ bool DelayLine::setDelay(float delayPS)
         setError("设备未连接");
         return false;
     }
-    
-    // 构建设置延迟命令：FC ID 02 xx xx xx FE
+
+    // 功能码 0x04：设置时间延迟，PS×1000→3字节大端
     QByteArray data = delayToBytes(delayPS);
     QByteArray frame = buildFrame(DELAY_CMD_SET_DELAY, data);
-    
+
     qint64 written = m_serialPort->writeData(frame);
     if (written != frame.size()) {
         setError("发送设置延迟命令失败");
         return false;
     }
-    
-    qDebug() << "设置延迟值:" << delayPS << "PS, 发送:" << frame.toHex(' ');
+
+    qDebug() << "延时线[ID=" << m_deviceId << "] 设置延迟:" << delayPS
+             << "PS, 帧:" << frame.toHex(' ');
     m_currentStatus.currentDelay = delayPS;
-    
-    return true;
-}
-
-bool DelayLine::increaseDelay(float delayPS)
-{
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 构建增加延迟命令：FC ID 03 xx xx xx FE
-    QByteArray data = delayToBytes(delayPS);
-    QByteArray frame = buildFrame(DELAY_CMD_INCREASE, data);
-    
-    qint64 written = m_serialPort->writeData(frame);
-    if (written != frame.size()) {
-        setError("发送增加延迟命令失败");
-        return false;
-    }
-    
-    qDebug() << "增加延迟值:" << delayPS << "PS";
-    return true;
-}
-
-bool DelayLine::decreaseDelay(float delayPS)
-{
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 构建减小延迟命令：FC ID 04 xx xx xx FE
-    QByteArray data = delayToBytes(delayPS);
-    QByteArray frame = buildFrame(DELAY_CMD_DECREASE, data);
-    
-    qint64 written = m_serialPort->writeData(frame);
-    if (written != frame.size()) {
-        setError("发送减小延迟命令失败");
-        return false;
-    }
-    
-    qDebug() << "减小延迟值:" << delayPS << "PS";
     return true;
 }
 
@@ -155,25 +113,20 @@ bool DelayLine::home()
         setError("设备未连接");
         return false;
     }
-    
-    // 构建归零命令：FC ID 05 00 00 00 FE
-    QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
+
+    // 功能码 0x07：归零，参数全0
+    QByteArray data(3, 0x00);
     QByteArray frame = buildFrame(DELAY_CMD_HOME, data);
-    
+
     qint64 written = m_serialPort->writeData(frame);
     if (written != frame.size()) {
         setError("发送归零命令失败");
         return false;
     }
-    
-    qDebug() << "延时线归零";
+
+    qDebug() << "延时线[ID=" << m_deviceId << "] 归零, 帧:" << frame.toHex(' ');
     m_currentStatus.currentDelay = 0.0f;
     m_currentStatus.isHomed = true;
-    
     return true;
 }
 
@@ -183,24 +136,19 @@ bool DelayLine::stop()
         setError("设备未连接");
         return false;
     }
-    
-    // 构建停止命令：FC ID 09 00 00 00 FE
-    QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
+
+    // 功能码 0x0B：停止运动，参数全0
+    QByteArray data(3, 0x00);
     QByteArray frame = buildFrame(DELAY_CMD_STOP, data);
-    
+
     qint64 written = m_serialPort->writeData(frame);
     if (written != frame.size()) {
         setError("发送停止命令失败");
         return false;
     }
-    
-    qDebug() << "延时线停止";
+
+    qDebug() << "延时线[ID=" << m_deviceId << "] 停止, 帧:" << frame.toHex(' ');
     m_currentStatus.isMoving = false;
-    
     return true;
 }
 
@@ -210,47 +158,18 @@ bool DelayLine::queryPosition()
         setError("设备未连接");
         return false;
     }
-    
-    // 构建查询位置命令：FC ID 0E 00 00 00 FE
-    QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
+
+    // 功能码 0x0E：查询当前位置，参数全0
+    QByteArray data(3, 0x00);
     QByteArray frame = buildFrame(DELAY_CMD_QUERY_POS, data);
-    
+
     qint64 written = m_serialPort->writeData(frame);
     if (written != frame.size()) {
         setError("发送查询位置命令失败");
         return false;
     }
-    
-    qDebug() << "查询延时线位置";
-    return true;
-}
 
-bool DelayLine::saveToEEPROM()
-{
-    if (!isConnected()) {
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 构建保存命令：FC ID 30 00 00 00 FE
-    QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
-    QByteArray frame = buildFrame(DELAY_CMD_SAVE, data);
-    
-    qint64 written = m_serialPort->writeData(frame);
-    if (written != frame.size()) {
-        setError("发送保存命令失败");
-        return false;
-    }
-    
-    qDebug() << "保存延时线配置到EEPROM";
+    qDebug() << "延时线[ID=" << m_deviceId << "] 查询位置, 帧:" << frame.toHex(' ');
     return true;
 }
 

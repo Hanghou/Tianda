@@ -143,6 +143,12 @@ public:
 signals:
     void spectrumDataReady(const QVector<int> &intensity);
 
+private slots:
+    /**
+     * @brief 串口收到数据时累积到内部缓冲区，避免和 receiveResponse() 中的 readAll 竞争
+     */
+    void onSerialDataReceived(const QByteArray &data);
+
 private:
     /**
      * @brief 发送命令
@@ -151,7 +157,7 @@ private:
      * @return 成功返回true
      */
     bool sendCommand(quint8 cmd, const QByteArray &data = QByteArray());
-    
+
     /**
      * @brief 接收响应
      * @param frame 输出的帧结构
@@ -159,6 +165,11 @@ private:
      * @return 成功返回true
      */
     bool receiveResponse(SpectrometerFrame &frame, int timeout = 1000);
+
+    /**
+     * @brief 清空接收缓冲区
+     */
+    void clearRxBuffer();
 
 private:
     SerialPortBase *m_serialPort;   // 串口对象
@@ -173,6 +184,8 @@ private:
     int m_minIntegrationTime;       // 最小积分时间（微秒）
     QString m_serialNumber;         // 序列号
     QString m_productNumber;        // 产品型号
+
+    QByteArray m_rxBuffer;          // 串口接收累积缓冲区（避免 readAll 竞争）
 };
 
 #endif // SPECTROMETER_H

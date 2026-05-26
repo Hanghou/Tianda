@@ -1,744 +1,398 @@
 #include "galvo_mirror.h"
+
+#include <QTcpSocket>
+#include <QUdpSocket>
+#include <QNetworkInterface>
+#include <QHostAddress>
 #include <QDebug>
-#include <QWidget>
+#include <QThread>
 
-// 解决 byte 类型冲突：在包含 windows.h 之前定义
-#ifndef BYTE_DEFINED
-#define BYTE_DEFINED
-typedef unsigned char byte;
-#endif
-
-#include <windows.h>  // Windows 头文件以支持 HWND 类型
-#include "library/HM_HashuScan.h"
-
-/**
- * @brief 构造函数
- */
 GalvoMirror::GalvoMirror(QObject *parent)
     : DeviceBase(parent)
-    , m_ipIndex(0)
-    , m_ipAddress("172.18.34.227")  // 默认IP地址
-    , m_isConnected(false)
-    , m_deviceCount(0)
-    , m_markProgress(0)
-    , m_progressTimer(new QTimer(this))
+    , m_cardIP(GalvoProto::kDefaultIP)
+    , m_udpSocket(nullptr)
+    , m_shapeSocket(nullptr)
+    , m_actionSocket(nullptr)
+    , m_heartbeatTimer(nullptr)
+    , m_ticks(0)
+    , m_lastTicksWhenSent(0)
+    , m_heartbeatOk(false)
 {
     initializeParameters();
-    
-    // 设置进度查询定时器
-    QObject::connect(m_progressTimer, &QTimer::timeout, this, &GalvoMirror::onProgressTimer);
 }
 
-/**
- * @brief 析构函数
- */
 GalvoMirror::~GalvoMirror()
 {
     disconnect();
+    if (m_udpSocket) { m_udpSocket->close(); m_udpSocket->deleteLater(); m_udpSocket = nullptr; }
 }
 
-// ========== 基础设备接口实现 ==========
-
-/**
- * @brief 初始化设备
- */
-bool GalvoMirror::initialize()
-{
-    qDebug() << "GalvoMirror: 初始化振镜控制卡";
-    
-    // 调用 HM_InitBoard 初始化通信
-    // 注意：需要窗口句柄，这里传入 nullptr，DLL 会创建隐藏窗口
-    int result = HM_InitBoard(nullptr);
-    
-    if (result == HM_OK) {
-        qDebug() << "GalvoMirror: 初始化成功";
-        setStatus(DeviceStatus::Ready);
-        return true;
-    } else {
-        qDebug() << "GalvoMirror: 初始化失败，错误码:" << result;
-        setStatus(DeviceStatus::Error);
-        setError("初始化失败");
-        return false;
-    }
-}
-
-/**
- * @brief 连接设备
- */
-bool GalvoMirror::connect()
-{
-    qDebug() << "GalvoMirror: 连接振镜控制卡";
-    
-    // 先搜索设备
-    int deviceCount = 0;
-    int result = HM_GetDeviceCount(&deviceCount);
-    
-    if (result != HM_OK || deviceCount == 0) {
-        qDebug() << "GalvoMirror: 未找到设备";
-        setError("未找到振镜控制卡设备");
-        setStatus(DeviceStatus::Error);
-        return false;
-    }
-    
-    m_deviceCount = deviceCount;
-    qDebug() << "GalvoMirror: 找到" << deviceCount << "个设备";
-    
-    // 默认连接第一个设备
-    if (m_ipIndex < 0 || m_ipIndex >= deviceCount) {
-        m_ipIndex = 0;
-    }
-    
-    result = HM_ConnectTo(m_ipIndex);
-    
-    if (result == HM_OK) {
-        m_isConnected = true;
-        setStatus(DeviceStatus::Connected);
-        emit connected();
-        qDebug() << "GalvoMirror: 连接成功，设备索引:" << m_ipIndex;
-        return true;
-    } else {
-        m_isConnected = false;
-        setStatus(DeviceStatus::Error);
-        setError(QString("连接失败，错误码: %1").arg(result));
-        qDebug() << "GalvoMirror: 连接失败，错误码:" << result;
-        return false;
-    }
-}
-
-/**
- * @brief 断开连接
- */
-void GalvoMirror::disconnect()
-{
-    if (!m_isConnected) {
-        return;
-    }
-    
-    qDebug() << "GalvoMirror: 断开振镜控制卡连接";
-    
-    // 停止进度定时器
-    if (m_progressTimer->isActive()) {
-        m_progressTimer->stop();
-    }
-    
-    // 调用 HM_DisconnectTo 断开连接
-    int result = HM_DisconnectTo(m_ipIndex);
-    
-    if (result == HM_OK) {
-        qDebug() << "GalvoMirror: 断开连接成功";
-    } else {
-        qDebug() << "GalvoMirror: 断开连接失败，错误码:" << result;
-    }
-    
-    m_isConnected = false;
-    setStatus(DeviceStatus::Disconnected);
-    emit disconnected();
-}
-
-/**
- * @brief 检查是否已连接
- */
-bool GalvoMirror::isConnected() const
-{
-    return m_isConnected;
-}
-
-/**
- * @brief 获取设备信息
- */
-QString GalvoMirror::getDeviceInfo() const
-{
-    return QString("思特GMC振镜控制卡 - IP: %1, 索引: %2")
-        .arg(m_ipAddress)
-        .arg(m_ipIndex);
-}
-
-// ========== 设备连接与管理 ==========
-
-/**
- * @brief 搜索控制卡设备
- */
-bool GalvoMirror::searchDevices()
-{
-    qDebug() << "GalvoMirror: 搜索控制卡设备";
-    
-    // 调用 HM_GetDeviceCount 获取设备数量
-    int deviceCount = 0;
-    int result = HM_GetDeviceCount(&deviceCount);
-    
-    if (result == HM_OK) {
-        m_deviceCount = deviceCount;
-        qDebug() << "GalvoMirror: 找到" << deviceCount << "个设备";
-        return true;
-    } else {
-        qDebug() << "GalvoMirror: 搜索设备失败，错误码:" << result;
-        setError(QString("搜索设备失败，错误码: %1").arg(result));
-        return false;
-    }
-}
-
-/**
- * @brief 获取设备数量
- */
-int GalvoMirror::getDeviceCount() const
-{
-    // TODO: 返回实际设备数量
-    return m_deviceCount;
-}
-
-/**
- * @brief 通过IP地址连接
- */
-bool GalvoMirror::connectByIP(const QString& ipAddress)
-{
-    qDebug() << "GalvoMirror: 通过IP连接:" << ipAddress;
-    
-    m_ipAddress = ipAddress;
-    
-    // 将QString转换为char*
-    QByteArray ipBytes = ipAddress.toLocal8Bit();
-    char* ipStr = ipBytes.data();
-    
-    // 调用 HM_ConnectByIpStr
-    int result = HM_ConnectByIpStr(ipStr);
-    
-    if (result == HM_OK) {
-        m_isConnected = true;
-        setStatus(DeviceStatus::Connected);
-        emit connected();
-        qDebug() << "GalvoMirror: 通过IP连接成功";
-        return true;
-    } else {
-        m_isConnected = false;
-        setStatus(DeviceStatus::Error);
-        setError(QString("通过IP连接失败，错误码: %1").arg(result));
-        qDebug() << "GalvoMirror: 通过IP连接失败，错误码:" << result;
-        return false;
-    }
-}
-
-/**
- * @brief 通过索引连接
- */
-bool GalvoMirror::connectByIndex(int ipIndex)
-{
-    qDebug() << "GalvoMirror: 通过索引连接:" << ipIndex;
-    
-    m_ipIndex = ipIndex;
-    
-    // TODO: 调用 HM_ConnectTo
-    
-    return true;
-}
-
-/**
- * @brief 获取连接状态
- */
-int GalvoMirror::getConnectionStatus() const
-{
-    // 调用 HM_GetConnectStatus
-    int status = HM_GetConnectStatus(m_ipIndex);
-    return status;
-}
-
-/**
- * @brief 获取设备IP地址
- */
-QString GalvoMirror::getDeviceIP() const
-{
-    return m_ipAddress;
-}
-
-// ========== 打标文件管理 ==========
-
-/**
- * @brief 下载打标文件（异步）
- */
-bool GalvoMirror::downloadMarkFile(const QString& filePath)
-{
-    qDebug() << "GalvoMirror: 下载打标文件:" << filePath;
-    
-    // TODO: 调用 HM_DownloadMarkFile
-    
-    return true;
-}
-
-/**
- * @brief 下载打标文件（同步）
- */
-bool GalvoMirror::downloadMarkFileSync(const QString& filePath)
-{
-    qDebug() << "GalvoMirror: 同步下载打标文件:" << filePath;
-    
-    // TODO: 调用 HM_DownloadMarkFileSyn
-    
-    emit downloadFinished();
-    return true;
-}
-
-/**
- * @brief 开始打标
- */
-bool GalvoMirror::startMark()
-{
-    qDebug() << "GalvoMirror: 开始打标";
-    
-    // TODO: 调用 HM_StartMark
-    
-    // 启动进度查询定时器
-    m_progressTimer->start(100);  // 每100ms查询一次
-    
-    return true;
-}
-
-/**
- * @brief 停止打标
- */
-bool GalvoMirror::stopMark()
-{
-    qDebug() << "GalvoMirror: 停止打标";
-    
-    // TODO: 调用 HM_StopMark
-    
-    m_progressTimer->stop();
-    
-    return true;
-}
-
-/**
- * @brief 暂停打标
- */
-bool GalvoMirror::pauseMark()
-{
-    qDebug() << "GalvoMirror: 暂停打标";
-    
-    // TODO: 调用 HM_PauseMark
-    
-    return true;
-}
-
-/**
- * @brief 继续打标
- */
-bool GalvoMirror::continueMark()
-{
-    qDebug() << "GalvoMirror: 继续打标";
-    
-    // TODO: 调用 HM_ContinueMark
-    
-    return true;
-}
-
-/**
- * @brief 获取打标进度
- */
-int GalvoMirror::getMarkProgress() const
-{
-    return m_markProgress;
-}
-
-// ========== 参数设置 ==========
-
-/**
- * @brief 设置打标偏移
- */
-bool GalvoMirror::setOffset(float offsetX, float offsetY, float offsetZ)
-{
-    qDebug() << "GalvoMirror: 设置偏移:" << offsetX << offsetY << offsetZ;
-    
-    if (!m_isConnected) {
-        qDebug() << "GalvoMirror: 设备未连接";
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 调用 HM_SetOffset
-    int result = HM_SetOffset(m_ipIndex, offsetX, offsetY, offsetZ);
-    
-    if (result == HM_OK) {
-        qDebug() << "GalvoMirror: 设置偏移成功";
-        return true;
-    } else {
-        qDebug() << "GalvoMirror: 设置偏移失败，错误码:" << result;
-        setError(QString("设置偏移失败，错误码: %1").arg(result));
-        return false;
-    }
-}
-
-/**
- * @brief 设置旋转
- */
-bool GalvoMirror::setRotation(float angle, float centerX, float centerY)
-{
-    qDebug() << "GalvoMirror: 设置旋转:" << angle << centerX << centerY;
-    
-    // TODO: 调用 HM_SetRotates
-    
-    return true;
-}
-
-/**
- * @brief 设置坐标系
- */
-bool GalvoMirror::setCoordinate(int coordinate)
-{
-    qDebug() << "GalvoMirror: 设置坐标系:" << coordinate;
-    
-    // TODO: 调用 HM_SetCoordinate
-    
-    return true;
-}
-
-/**
- * @brief 设置打标范围
- */
-bool GalvoMirror::setMarkRegion(int region)
-{
-    qDebug() << "GalvoMirror: 设置打标范围:" << region;
-    
-    // TODO: 调用 HM_SetMarkRegion
-    
-    return true;
-}
-
-/**
- * @brief 获取打标范围
- */
-int GalvoMirror::getMarkRegion() const
-{
-    // TODO: 调用 HM_GetMarkRegion
-    return 0;
-}
-
-// ========== 振镜控制 ==========
-
-/**
- * @brief 振镜跳转到指定位置
- */
-bool GalvoMirror::scannerJump(float x, float y, float z)
-{
-    qDebug() << "GalvoMirror: 振镜跳转:" << x << y << z;
-    
-    if (!m_isConnected) {
-        qDebug() << "GalvoMirror: 设备未连接";
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 调用 HM_ScannerJump
-    int result = HM_ScannerJump(m_ipIndex, x, y, z);
-    
-    if (result == HM_OK) {
-        qDebug() << "GalvoMirror: 振镜跳转成功";
-        return true;
-    } else {
-        qDebug() << "GalvoMirror: 振镜跳转失败，错误码:" << result;
-        setError(QString("振镜跳转失败，错误码: %1").arg(result));
-        return false;
-    }
-}
-
-/**
- * @brief 设置红光预览
- */
-bool GalvoMirror::setGuideLaser(bool enable)
-{
-    qDebug() << "GalvoMirror: 红光预览:" << enable;
-    
-    if (!m_isConnected) {
-        qDebug() << "GalvoMirror: 设备未连接";
-        setError("设备未连接");
-        return false;
-    }
-    
-    // 调用 HM_SetGuidLaser
-    int result = HM_SetGuidLaser(m_ipIndex, enable);
-    
-    if (result == HM_OK) {
-        qDebug() << "GalvoMirror: 红光预览设置成功";
-        return true;
-    } else {
-        qDebug() << "GalvoMirror: 红光预览设置失败，错误码:" << result;
-        setError(QString("红光预览设置失败，错误码: %1").arg(result));
-        return false;
-    }
-}
-
-// ========== 校正表管理 ==========
-
-/**
- * @brief 下载校正表
- */
-bool GalvoMirror::downloadCorrection(const QString& filePath)
-{
-    qDebug() << "GalvoMirror: 下载校正表:" << filePath;
-    
-    // TODO: 调用 HM_DownloadCorrection
-    
-    return true;
-}
-
-/**
- * @brief 固化校正表
- */
-bool GalvoMirror::burnCorrection(const QString& filePath)
-{
-    qDebug() << "GalvoMirror: 固化校正表:" << filePath;
-    
-    // TODO: 调用 HM_BurnCorrection
-    
-    return true;
-}
-
-/**
- * @brief 选择校正表
- */
-bool GalvoMirror::selectCorrection(int crtIndex)
-{
-    qDebug() << "GalvoMirror: 选择校正表:" << crtIndex;
-    
-    // TODO: 调用 HM_SelectCorrection
-    
-    return true;
-}
-
-// ========== IO控制 ==========
-
-/**
- * @brief 设置输出高电平
- */
-bool GalvoMirror::setOutputOn(int outIndex)
-{
-    qDebug() << "GalvoMirror: 设置输出" << outIndex << "为高电平";
-    
-    // TODO: 调用 HM_SetOutputOn_GMC4
-    
-    return true;
-}
-
-/**
- * @brief 设置输出低电平
- */
-bool GalvoMirror::setOutputOff(int outIndex)
-{
-    qDebug() << "GalvoMirror: 设置输出" << outIndex << "为低电平";
-    
-    // TODO: 调用 HM_SetOutputOff_GMC4
-    
-    return true;
-}
-
-/**
- * @brief 获取输入状态
- */
-int GalvoMirror::getInputStatus() const
-{
-    // TODO: 调用 HM_GetInput_GMC4
-    return 0;
-}
-
-/**
- * @brief 获取激光器报警状态
- */
-int GalvoMirror::getLaserInputStatus() const
-{
-    // TODO: 调用 HM_GetLaserInput
-    return 0;
-}
-
-/**
- * @brief 设置模拟量输出
- */
-bool GalvoMirror::setAnalog(float voutA, float voutB)
-{
-    qDebug() << "GalvoMirror: 设置模拟量:" << voutA << voutB;
-    
-    // TODO: 调用 HM_SetAnalog
-    
-    return true;
-}
-
-// ========== 脱机打标 ==========
-
-/**
- * @brief 设置脱机模式
- */
-bool GalvoMirror::setBurnMode(int mode)
-{
-    qDebug() << "GalvoMirror: 设置脱机模式:" << mode;
-    
-    // TODO: 调用 HM_SetBurnMode
-    
-    return true;
-}
-
-/**
- * @brief 设置脱机文档索引
- */
-bool GalvoMirror::setBurnIndex(int udmIndex)
-{
-    qDebug() << "GalvoMirror: 设置脱机文档索引:" << udmIndex;
-    
-    // TODO: 调用 HM_SetBurnIndex
-    
-    return true;
-}
-
-/**
- * @brief 设置开始脱机标志
- */
-bool GalvoMirror::setStartBurnFlag()
-{
-    qDebug() << "GalvoMirror: 设置开始脱机标志";
-    
-    // TODO: 调用 HM_SetStartBurnFlag
-    
-    return true;
-}
-
-/**
- * @brief 固化/清除脱机文件
- */
-bool GalvoMirror::burnMarkFile(bool enable)
-{
-    qDebug() << "GalvoMirror: 固化脱机文件:" << enable;
-    
-    // TODO: 调用 HM_BurnMarkFile
-    
-    return true;
-}
-
-/**
- * @brief 判断是否固化完成
- */
-bool GalvoMirror::getBurnOverFlag() const
-{
-    // TODO: 调用 HM_GetBurnOverFlag
-    return true;
-}
-
-/**
- * @brief 获取脱机文档个数
- */
-int GalvoMirror::getBurnFileNum() const
-{
-    // TODO: 调用 HM_GetBurnFileNum
-    return 0;
-}
-
-/**
- * @brief 判断是否有SD卡
- */
-bool GalvoMirror::hasSDCard() const
-{
-    // TODO: 调用 HM_GetSDCardFlag
-    return false;
-}
-
-// ========== 状态查询 ==========
-
-/**
- * @brief 获取工作状态
- */
-int GalvoMirror::getWorkStatus() const
-{
-    if (!m_isConnected) {
-        return 0;
-    }
-    
-    // 调用 HM_GetWorkStatus
-    // 返回值：1=ready, 2=run, 3=alarm
-    int status = HM_GetWorkStatus(m_ipIndex);
-    return status;
-}
-
-/**
- * @brief 获取XY位置反馈
- */
-bool GalvoMirror::getFeedbackPosXY(short* fbX, short* fbY)
-{
-    // TODO: 调用 HM_GetFeedbackPosXY
-    return true;
-}
-
-/**
- * @brief 获取XY位置指令
- */
-bool GalvoMirror::getCmdPosXY(short* cmdX, short* cmdY)
-{
-    // TODO: 调用 HM_GetCmdPosXY
-    return true;
-}
-
-/**
- * @brief 获取超范围报警
- */
-bool GalvoMirror::getOverrangeInfo() const
-{
-    // TODO: 调用 HM_GetOverangeInfo
-    return false;
-}
-
-/**
- * @brief 清除闭环报警
- */
-bool GalvoMirror::clearCloseLoopAlarm()
-{
-    qDebug() << "GalvoMirror: 清除闭环报警";
-    
-    // TODO: 调用 HM_ClearCloseLoopAlarm
-    
-    return true;
-}
-
-/**
- * @brief 获取振镜状态信息
- */
-int GalvoMirror::getGalvoStatusInfo(int galvoType)
-{
-    // TODO: 调用 HM_GetGalvoStatusInfo
-    return 0;
-}
-
-// ========== 私有槽函数 ==========
-
-/**
- * @brief 进度查询定时器槽函数
- */
-void GalvoMirror::onProgressTimer()
-{
-    // TODO: 调用 HM_ExecuteProgress 查询打标进度
-    // 进度会通过消息回调返回
-}
-
-// ========== 私有辅助方法 ==========
-
-/**
- * @brief 初始化参数
- */
+// ========== 默认参数初始化 ==========
 void GalvoMirror::initializeParameters()
 {
-    m_ipIndex = 0;
-    m_ipAddress = "172.18.34.227";  // 默认IP
-    m_isConnected = false;
-    m_deviceCount = 0;
-    m_markProgress = 0;
+    std::memset(&m_laserPara,   0, sizeof(m_laserPara));
+    std::memset(&m_markSetting, 0, sizeof(m_markSetting));
+    std::memset(&m_shape,       0, sizeof(m_shape));
+    std::memset(&m_ioControl,   0, sizeof(m_ioControl));
+    std::memset(&m_pointPara,   0, sizeof(m_pointPara));
+
+    m_laserPara.nLaserOnDelay   = 110;
+    m_laserPara.nLaserOffDelay  = 120;
+    m_laserPara.nFPSDelay       = 10;
+    m_laserPara.nFPSLength      = 20;
+    m_laserPara.nQDelay         = 5;
+    m_laserPara.DutyCycle       = 0.5f;
+    m_laserPara.Frequency       = 50.0f;
+    m_laserPara.StandbyDutyCycle = 0.2f;
+    m_laserPara.StandbyFrequency = 10.0f;
+    m_laserPara.nLaserPower     = 50.0f;
+
+    m_markSetting.nMarkV          = 100;
+    m_markSetting.nMark2MarkDelay = 0;
+    m_markSetting.nJumpDelay      = 0;
+    m_markSetting.nMarkDelay      = 0;
+    m_markSetting.nJumpV          = 1000;
+    m_markSetting.ScanTimes       = 1;
+
+    m_shape.Shape             = static_cast<float>(GALVO_SHAPE_POINT);
+    m_shape.PointX            = 0.0f;
+    m_shape.PointY            = 0.0f;
+    m_shape.Point_LaseronTime = 1000.0f;
+    m_shape.Line_StartX       = -10.0f;
+    m_shape.Line_StartY       = 10.0f;
+    m_shape.Line_EndX         = 10.0f;
+    m_shape.Line_EndY         = -10.0f;
+    m_shape.CircleX           = 0.0f;
+    m_shape.CircleY           = 0.0f;
+    m_shape.Circle_Radius     = 5.0f;
+
+    m_ioControl.nRedLightEnable  = 0;
+    m_ioControl.nReadyDownEanble = 1;
+    m_ioControl.nLightLevel      = 0;
 }
 
-/**
- * @brief 加载DLL库
- */
-bool GalvoMirror::loadLibraries()
+// ========== DeviceBase 接口实现 ==========
+bool GalvoMirror::connect()
 {
-    // TODO: 动态加载 HM_Comm.dll 和 HM_HashuScan.dll
+    return connectByIP(m_cardIP);
+}
+
+void GalvoMirror::disconnect()
+{
+    if (m_actionSocket) {
+        if (m_actionSocket->state() == QAbstractSocket::ConnectedState)
+            m_actionSocket->disconnectFromHost();
+        m_actionSocket->deleteLater();
+        m_actionSocket = nullptr;
+    }
+    if (m_shapeSocket) {
+        if (m_shapeSocket->state() == QAbstractSocket::ConnectedState)
+            m_shapeSocket->disconnectFromHost();
+        m_shapeSocket->deleteLater();
+        m_shapeSocket = nullptr;
+    }
+    if (m_heartbeatTimer) {
+        m_heartbeatTimer->stop();
+        m_heartbeatTimer->deleteLater();
+        m_heartbeatTimer = nullptr;
+    }
+    m_heartbeatOk = false;
+    setStatus(DeviceStatus::Disconnected);
+    emit messageLog(QStringLiteral("已断开振镜控制卡连接"));
+}
+
+bool GalvoMirror::isConnected() const
+{
+    return m_shapeSocket && m_shapeSocket->state() == QAbstractSocket::ConnectedState
+        && m_actionSocket && m_actionSocket->state() == QAbstractSocket::ConnectedState;
+}
+
+QString GalvoMirror::getDeviceInfo() const
+{
+    return QString("GalvoMirror @ %1 (TCP %2/%3, UDP %4)")
+            .arg(m_cardIP)
+            .arg(GalvoProto::kPortShape)
+            .arg(GalvoProto::kPortAction)
+            .arg(GalvoProto::kPortHeart);
+}
+
+
+// ========== 心跳检测 (UDP 5998) ==========
+bool GalvoMirror::connectByIP(const QString &ipAddress)
+{
+    m_cardIP = ipAddress;
+    setStatus(DeviceStatus::Connecting);
+    emit messageLog(QStringLiteral("正在连接振镜控制卡 %1 ...").arg(ipAddress));
+
+    // 1. 启动心跳（如果还没启动）
+    if (!m_udpSocket) {
+        m_udpSocket = new QUdpSocket(this);
+        // 绑定本机 172.18.34.x 网段地址到 5998 端口
+        const QList<QHostAddress> addrList = QNetworkInterface::allAddresses();
+        bool bound = false;
+        for (const QHostAddress &addr : addrList) {
+            if (addr.toString().startsWith(QStringLiteral("172.18.34"))) {
+                if (m_udpSocket->bind(addr, GalvoProto::kPortHeart)) {
+                    bound = true;
+                    emit messageLog(QStringLiteral("UDP 心跳已绑定 %1:%2")
+                                    .arg(addr.toString())
+                                    .arg(GalvoProto::kPortHeart));
+                    break;
+                }
+            }
+        }
+        if (!bound) {
+            // 找不到 172.18.34.x 网段时绑定 AnyIPv4，避免完全失败
+            m_udpSocket->bind(QHostAddress::AnyIPv4, GalvoProto::kPortHeart);
+            emit messageLog(QStringLiteral("UDP 心跳已绑定 AnyIPv4:%1（未找到 172.18.34.x 网段）")
+                            .arg(GalvoProto::kPortHeart));
+        }
+        QObject::connect(m_udpSocket, &QUdpSocket::readyRead,
+                         this, &GalvoMirror::onUdpReadyRead);
+
+        m_heartbeatTimer = new QTimer(this);
+        QObject::connect(m_heartbeatTimer, &QTimer::timeout,
+                         this, &GalvoMirror::onHeartbeatTimeout);
+        m_heartbeatTimer->start(1000);
+    }
+
+    // 2. 创建 TCP 6002 / 6003 连接
+    if (!m_shapeSocket) {
+        m_shapeSocket = new QTcpSocket(this);
+        QObject::connect(m_shapeSocket, &QTcpSocket::readyRead,
+                         this, &GalvoMirror::onShapeReadyRead);
+    }
+    if (!m_actionSocket) {
+        m_actionSocket = new QTcpSocket(this);
+        QObject::connect(m_actionSocket, &QTcpSocket::readyRead,
+                         this, &GalvoMirror::onActionReadyRead);
+    }
+
+    m_shapeSocket->connectToHost(m_cardIP, GalvoProto::kPortShape);
+    if (!m_shapeSocket->waitForConnected(3000)) {
+        setError(QStringLiteral("6002 端口连接失败：%1").arg(m_shapeSocket->errorString()));
+        setStatus(DeviceStatus::Error);
+        emit messageLog(QStringLiteral("6002 端口连接失败：%1").arg(m_shapeSocket->errorString()));
+        return false;
+    }
+
+    m_actionSocket->connectToHost(m_cardIP, GalvoProto::kPortAction);
+    if (!m_actionSocket->waitForConnected(3000)) {
+        setError(QStringLiteral("6003 端口连接失败：%1").arg(m_actionSocket->errorString()));
+        setStatus(DeviceStatus::Error);
+        emit messageLog(QStringLiteral("6003 端口连接失败：%1").arg(m_actionSocket->errorString()));
+        return false;
+    }
+
+    setStatus(DeviceStatus::Connected);
+    emit messageLog(QStringLiteral("振镜控制卡连接成功"));
     return true;
 }
 
-/**
- * @brief 设置消息处理
- */
-void GalvoMirror::setupMessageHandling()
+void GalvoMirror::onUdpReadyRead()
 {
-    // TODO: 在Qt中处理Windows消息
-    // 需要特殊处理窗口句柄和消息循环
+    while (m_udpSocket && m_udpSocket->hasPendingDatagrams()) {
+        QByteArray buf;
+        buf.resize(static_cast<int>(m_udpSocket->pendingDatagramSize()));
+        m_udpSocket->readDatagram(buf.data(), buf.size());
+        ++m_ticks;
+    }
+}
+
+void GalvoMirror::onHeartbeatTimeout()
+{
+    if (!m_udpSocket) return;
+    const quint32 before = m_ticks;
+    m_lastTicksWhenSent = before;
+    // 向控制卡发送任意数据
+    m_udpSocket->writeDatagram("0", 1,
+                               QHostAddress(m_cardIP),
+                               GalvoProto::kPortHeart);
+    QThread::msleep(100);
+    const bool ok = (m_ticks != before);
+    if (ok != m_heartbeatOk) {
+        m_heartbeatOk = ok;
+        emit heartbeatChanged(ok);
+        emit messageLog(ok ? QStringLiteral("心跳检测：在线")
+                           : QStringLiteral("心跳检测：离线"));
+    }
+}
+
+// ========== TCP 接收 ==========
+void GalvoMirror::onActionReadyRead()
+{
+    if (!m_actionSocket) return;
+    QByteArray data = m_actionSocket->readAll();
+    if (data.isEmpty()) return;
+    emit actionDataReceived(data);
+    if (data.at(0) == 'r')
+        emit messageLog(QStringLiteral("[6003] 开始运行中..."));
+    else if (data.at(0) == 'f')
+        emit messageLog(QStringLiteral("[6003] 打标完成"));
+}
+
+void GalvoMirror::onShapeReadyRead()
+{
+    if (!m_shapeSocket) return;
+    QByteArray data = m_shapeSocket->readAll();
+    if (data.isEmpty()) return;
+    emit shapeDataReceived(data);
+    if (data.at(0) == 'r')
+        emit messageLog(QStringLiteral("[6002] 图形参数已接收"));
+    else if (data.at(0) == 'f')
+        emit messageLog(QStringLiteral("[6002] 图形参数处理完成"));
+}
+
+
+// ========== 通用 TCP 发送 ==========
+bool GalvoMirror::sendOnSocket(QTcpSocket *sock, const void *data, int size)
+{
+    if (!sock || sock->state() != QAbstractSocket::ConnectedState) {
+        emit messageLog(QStringLiteral("发送失败：Socket 未连接"));
+        return false;
+    }
+    qint64 sent = sock->write(reinterpret_cast<const char*>(data), size);
+    sock->flush();
+    return sent == size;
+}
+
+// ========== 构造打标参数总帧 ==========
+GalvoMarkParameter GalvoMirror::buildMarkParameter() const
+{
+    GalvoMarkParameter param;
+    std::memset(&param, 0, sizeof(param));
+
+    param.m_nCmdType = 0x08;     // 固定：图形参数命令
+    param.cSysCmd    = 0x14;     // 固定：系统命令 20
+    param.cStatus    = 1;
+    param.uReserved  = 0;
+
+    GalvoCommFrame &comm = param.stUnitFrame;
+    comm.nHeader   = GalvoProto::kFrameHeader;  // 0x5A5AA5A5
+    comm.LaserPara = m_laserPara;
+    comm.stmark    = m_markSetting;
+    comm.ShpaeInfo = m_shape;
+    comm.IOControl = m_ioControl;
+    comm.PointPara = m_pointPara;
+    return param;
+}
+
+// ========== 仅发送图形参数到 6002 ==========
+bool GalvoMirror::sendShapeFrame()
+{
+    if (!isConnected()) {
+        emit messageLog(QStringLiteral("发送图形参数失败：未连接"));
+        return false;
+    }
+    GalvoMarkParameter param = buildMarkParameter();
+    bool ok = sendOnSocket(m_shapeSocket, &param, sizeof(param));
+    if (ok)
+        emit messageLog(QStringLiteral("已发送图形参数 (%1 字节)").arg(sizeof(param)));
+    else
+        emit messageLog(QStringLiteral("图形参数发送失败"));
+    return ok;
+}
+
+// ========== 控制指令 (TCP 6003) ==========
+bool GalvoMirror::startMark()
+{
+    if (!isConnected()) {
+        emit messageLog(QStringLiteral("开始打标失败：未连接"));
+        return false;
+    }
+    // 1. 先发图形参数到 6002
+    if (!sendShapeFrame()) return false;
+
+    // 2. 再发开始指令到 6003
+    GalvoControlAction action;
+    std::memset(&action, 0, sizeof(action));
+    action.nDebugType = 114;                 // 固定 'r'
+    action.nOperation = GALVO_CMD_START;     // 'e'
+    bool ok = sendOnSocket(m_actionSocket, &action, sizeof(action));
+    emit messageLog(ok ? QStringLiteral("已发送开始打标指令")
+                       : QStringLiteral("开始打标指令发送失败"));
+    return ok;
+}
+
+bool GalvoMirror::stopMark()
+{
+    if (!isConnected()) return false;
+    GalvoControlAction action;
+    std::memset(&action, 0, sizeof(action));
+    action.nDebugType = 114;
+    action.nOperation = GALVO_CMD_STOP;       // 'r'
+    bool ok = sendOnSocket(m_actionSocket, &action, sizeof(action));
+    emit messageLog(ok ? QStringLiteral("已发送停止/复位指令")
+                       : QStringLiteral("停止指令发送失败"));
+    return ok;
+}
+
+bool GalvoMirror::pauseMark()
+{
+    if (!isConnected()) return false;
+    GalvoControlAction action;
+    std::memset(&action, 0, sizeof(action));
+    action.nDebugType = 114;
+    action.nOperation = GALVO_CMD_PAUSE;      // 'p'
+    bool ok = sendOnSocket(m_actionSocket, &action, sizeof(action));
+    emit messageLog(ok ? QStringLiteral("已发送暂停指令")
+                       : QStringLiteral("暂停指令发送失败"));
+    return ok;
+}
+
+bool GalvoMirror::continueMark()
+{
+    if (!isConnected()) return false;
+    GalvoControlAction action;
+    std::memset(&action, 0, sizeof(action));
+    action.nDebugType = 114;
+    action.nOperation = GALVO_CMD_CONTINUE;   // 'c'
+    bool ok = sendOnSocket(m_actionSocket, &action, sizeof(action));
+    emit messageLog(ok ? QStringLiteral("已发送继续指令")
+                       : QStringLiteral("继续指令发送失败"));
+    return ok;
+}
+
+// ========== 振镜跳转：兼容业务接口（转换为单点打标） ==========
+bool GalvoMirror::scannerJump(float x, float y, float /*z*/)
+{
+    if (!isConnected()) return false;
+    // 写入点图形参数
+    m_shape.Shape  = static_cast<float>(GALVO_SHAPE_POINT);
+    m_shape.PointX = x;
+    m_shape.PointY = y;
+    if (m_shape.Point_LaseronTime <= 0.0f)
+        m_shape.Point_LaseronTime = 1.0f; // 默认极短脉冲，避免长时间出光
+    return startMark();
+}
+
+// ========== 寄存器读写 (TCP 6002) ==========
+bool GalvoMirror::readRegister(uint32_t addr)
+{
+    if (!isConnected()) return false;
+    GalvoRegCommandFrame frame;
+    std::memset(&frame, 0, sizeof(frame));
+    frame.m_nCmdType = 1;
+    frame.m_nCmdCount = 1;
+    frame.RegCommand.cCmd      = 0x03; // 读
+    frame.RegCommand.cDataType = 0x00; // INT
+    frame.RegCommand.cStatus   = 0x01;
+    frame.RegCommand.uAddr     = addr;
+    frame.RegCommand.udData    = 0;
+    return sendOnSocket(m_shapeSocket, &frame, sizeof(frame));
+}
+
+bool GalvoMirror::writeRegister(uint32_t addr, int32_t value)
+{
+    if (!isConnected()) return false;
+    GalvoRegCommandFrame frame;
+    std::memset(&frame, 0, sizeof(frame));
+    frame.m_nCmdType = 1;
+    frame.m_nCmdCount = 1;
+    frame.RegCommand.cCmd      = 0x06; // 写
+    frame.RegCommand.cDataType = 0x00;
+    frame.RegCommand.cStatus   = 0x01;
+    frame.RegCommand.uAddr     = addr;
+    frame.RegCommand.udData    = value;
+    return sendOnSocket(m_shapeSocket, &frame, sizeof(frame));
 }

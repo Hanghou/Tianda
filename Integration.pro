@@ -48,7 +48,7 @@ HEADERS += \
     DelayLine/delay_line.h \
     DelayLine/delay_protocol.h \
     GalvoMirror/galvo_mirror.h \
-    GalvoMirror/galvo_protocol.h \
+    GalvoMirror/galvo_protocol_v2.h \
     Utils/data_manager.h \
     Utils/csv_exporter.h \
     Utils/image_saver.h \
@@ -64,12 +64,8 @@ qnx: target.path = /tmp/${TARGET}/bin
 else: unix:!android: target.path = /opt/${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-# 振镜控制卡库文件链接
-LIBS += -L$$PWD/GalvoMirror/library/ -lHM_HashuScan -lHM_Comm
-
 # 包含路径
 INCLUDEPATH += $$PWD
-INCLUDEPATH += $$PWD/GalvoMirror/library
 DEPENDPATH += $$PWD
 
 DISTFILES += \

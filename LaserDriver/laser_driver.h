@@ -66,6 +66,25 @@ public:
     LaserType getLaserType() const { return m_laserType; }
     
     /**
+     * @brief 读取基本信息（0xD1命令）
+     * @return 成功返回true
+     */
+    bool readBasicInfo();
+    
+    /**
+     * @brief 获取基本信息
+     * @return 基本信息结构
+     */
+    LaserBasicInfo getBasicInfo() const { return m_basicInfo; }
+    
+    /**
+     * @brief 设置泵浦电流（仅当功率设置方式为2时有效）
+     * @param current 电流值（mA）
+     * @return 成功返回true
+     */
+    bool setPumpCurrent(quint16 current);
+    
+    /**
      * @brief 设置电流
      * @param current 电流值（实际值，单位根据激光器类型：种子源和Stokes为mA，FOPO为A）
      * @return 成功返回true
@@ -120,10 +139,12 @@ private slots:
     void onSerialError(const QString &error);
 
 private:
-    // 协议相关（后续实现）
-    QByteArray buildFrame(quint8 controlCode, const QByteArray &data);
-    bool parseFrame(const QByteArray &frame, LaserStatus &status);
-    quint8 calculateChecksum(const QByteArray &data);
+    // 协议相关
+    QByteArray buildFrame(quint8 commandCode, const QByteArray &data);
+    bool parseFrame(const QByteArray &frame);
+    QByteArray calculateChecksum(const QByteArray &data);
+    bool parseBasicInfo(const QByteArray &frame);
+    bool parseSetCommandReply(const QByteArray &frame, quint8 expectedCmd);
     
 private:
     SerialPortBase *m_serialPort;   // 串口对象
@@ -132,6 +153,8 @@ private:
     quint8 m_deviceId;              // 设备ID
     LaserType m_laserType;          // 激光器类型
     LaserStatus m_currentStatus;    // 当前状态
+    LaserBasicInfo m_basicInfo;     // 基本信息
+    QByteArray m_receiveBuffer;     // 接收缓冲区
 };
 
 #endif // LASER_DRIVER_H

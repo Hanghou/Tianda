@@ -98,18 +98,15 @@ bool LaserDriver::openPort(const QString &portName, qint32 baudRate,
 
 void LaserDriver::onDataReceived(const QByteArray &data)
 {
-    qDebug() << "激光器接收数据:" << data.toHex(' ');
+    qDebug() << "激光器接收数据:" << data.toHex(' ').toUpper();
+    
+    // 将接收到的数据追加到缓冲区
+    m_receiveBuffer.append(data);
     
     // 解析数据帧
-    LaserStatus status;
-    if (parseFrame(data, status)) {
-        m_currentStatus = status;
-        emit statusUpdated(status);
-        qDebug() << QString("%1状态更新 - 运行:%2, 电流:%3, 温度:%4℃")
-                    .arg(m_deviceName)
-                    .arg(status.isRunning ? "是" : "否")
-                    .arg(status.setCurrent)
-                    .arg(status.setTemperature);
+    if (parseFrame(m_receiveBuffer)) {
+        // 解析成功,清空缓冲区
+        m_receiveBuffer.clear();
     }
     
     emit dataReady(data);
@@ -135,152 +132,281 @@ void LaserDriver::onSerialError(const QString &error)
     qDebug() << "激光器错误:" << error;
 }
 
-// 协议相关函数实现
-QByteArray LaserDriver::buildFrame(quint8 controlCode, const QByteArray &data)
+// ========== 协议相关函数实现 ==========
+
+/**
+ * @brief 构建命令帧
+ * @param commandCode 命令字
+ * @param data 数据域
+ * @return 完整的命令帧
+ */
+QByteArray LaserDriver::buildFrame(quint8 commandCode, const QByteArray &data)
 {
     QByteArray frame;
     
-    // 起始码
-    frame.append(LASER_FRAME_START);
+    // 信息头（上位机下发：0xAA 0x55）
+    frame.append(LASER_FRAME_START_1);
+    frame.append(LASER_FRAME_START_2);
     
-    // 设备ID（4字节，全为0x00）
-    frame.append((char)0x00);
-    frame.append((char)0x00);
-    frame.append((char)0x00);
-    frame.append((char)0x00);
+    // 命令字
+    frame.append(commandCode);
     
-    // 控制字
-    frame.append(controlCode);
-    
-    // 数据长度（2字节，高字节在前）
-    quint16 dataLen = data.size();
-    frame.append((char)((dataLen >> 8) & 0xFF));  // 高字节
-    frame.append((char)(dataLen & 0xFF));         // 低字节
+    // 数据长度（1字节）
+    quint8 dataLen = data.size();
+    frame.append(dataLen);
     
     // 数据域
     frame.append(data);
     
-    // 计算校验和（从设备ID到数据域的累加和取反）
-    quint8 checksum = calculateChecksum(frame.mid(1));
+    // 计算校验和（信息头+命令字+数据长度+数据，所有字节相加取低16位）
+    QByteArray checksumData = frame;  // 包含所有字节
+    QByteArray checksum = calculateChecksum(checksumData);
     frame.append(checksum);
-    
-    // 结束码
-    frame.append(LASER_FRAME_END);
     
     return frame;
 }
 
-bool LaserDriver::parseFrame(const QByteArray &frame, LaserStatus &status)
+/**
+ * @brief 计算校验和
+ * @param data 需要计算校验和的数据
+ * @return 校验和（2字节，低字节在前，高字节在后）
+ */
+QByteArray LaserDriver::calculateChecksum(const QByteArray &data)
 {
-    // 最小帧长度：起始码(1) + 设备ID(4) + 控制字(1) + 长度(2) + 校验和(1) + 结束码(1) = 10
-    if (frame.size() < 10) {
+    quint32 sum = 0;
+    for (quint8 byte : data) {
+        sum += byte;
+    }
+    
+    // 取低16位
+    quint16 low16 = sum & 0xFFFF;
+    
+    // 拆分低字节和高字节
+    quint8 lowByte = low16 & 0xFF;
+    quint8 highByte = (low16 >> 8) & 0xFF;
+    
+    QByteArray checksum;
+    checksum.append(lowByte);   // 低字节在前
+    checksum.append(highByte);  // 高字节在后
+    
+    return checksum;
+}
+
+/**
+ * @brief 解析接收到的数据帧
+ * @param frame 接收到的数据帧
+ * @return 解析成功返回true
+ */
+bool LaserDriver::parseFrame(const QByteArray &frame)
+{
+    // 最小帧长度：信息头(2) + 命令字(1) + 数据长度(1) + 数据(至少1) + 校验和(2) = 7
+    if (frame.size() < 7) {
         qDebug() << "帧长度不足";
         return false;
     }
     
-    // 检查起始码和结束码
-    if ((quint8)frame[0] != LASER_FRAME_START || (quint8)frame[frame.size() - 1] != LASER_FRAME_END) {
-        qDebug() << "帧标识错误";
+    // 检查信息头（下位机上传：0x55 0xAA）
+    if ((quint8)frame[0] != LASER_FRAME_REPLY_1 || (quint8)frame[1] != LASER_FRAME_REPLY_2) {
+        qDebug() << "信息头错误";
         return false;
     }
     
-    // 提取控制字
-    quint8 controlCode = (quint8)frame[5];
+    // 提取命令字
+    quint8 commandCode = (quint8)frame[2];
     
-    // 提取数据长度（2字节，高字节在前）
-    quint16 dataLen = ((quint8)frame[6] << 8) | (quint8)frame[7];
+    // 提取数据长度
+    quint8 dataLen = (quint8)frame[3];
     
-    // 检查帧长度是否匹配：起始码(1) + 设备ID(4) + 控制字(1) + 长度(2) + 数据域(dataLen) + 校验和(1) + 结束码(1)
-    if (frame.size() != 10 + dataLen) {
-        qDebug() << "帧长度不匹配，期望:" << (10 + dataLen) << "实际:" << frame.size();
+    // 检查帧长度是否匹配：信息头(2) + 命令字(1) + 数据长度(1) + 数据(dataLen) + 校验和(2)
+    if (frame.size() != 6 + dataLen) {
+        qDebug() << "帧长度不匹配，期望:" << (6 + dataLen) << "实际:" << frame.size();
         return false;
     }
     
     // 验证校验和
-    QByteArray checksumData = frame.mid(1, 7 + dataLen);  // 从设备ID到数据域
-    quint8 expectedChecksum = calculateChecksum(checksumData);
-    quint8 actualChecksum = (quint8)frame[8 + dataLen];
+    QByteArray checksumData = frame.mid(0, 4 + dataLen);  // 信息头+命令字+数据长度+数据
+    QByteArray expectedChecksum = calculateChecksum(checksumData);
+    quint8 actualChecksumLow = (quint8)frame[4 + dataLen];
+    quint8 actualChecksumHigh = (quint8)frame[5 + dataLen];
     
-    if (expectedChecksum != actualChecksum) {
-        qDebug() << "校验和错误，期望:" << QString::number(expectedChecksum, 16) 
-                 << "实际:" << QString::number(actualChecksum, 16);
+    if ((quint8)expectedChecksum[0] != actualChecksumLow || 
+        (quint8)expectedChecksum[1] != actualChecksumHigh) {
+        qDebug() << "校验和错误";
         return false;
     }
     
-    // 解析数据域（根据控制字）
-    if (controlCode == LASER_CMD_QUERY_STATUS && dataLen == 18) {
-        // 解析18字节状态数据
-        const char* data = frame.constData() + 8;  // 数据域起始位置
-        
-        // 第1字节：目标检测
-        status.targetDetected = (data[0] == 0x01);
-        
-        // 第2字节：目标温度状态
-        quint8 tempStatus = (quint8)data[1];
-        status.targetTemperatureOk = (tempStatus == 0x01);
-        
-        // 第3字节：运行状态
-        status.isRunning = (data[2] == 0x01);
-        
-        // 第4字节：环境温度状态
-        status.ambientTemperatureOk = (data[3] == 0x00);
-        
-        // 第5字节：背光电流单位
-        status.currentUnit = (quint8)data[4];
-        
-        // 第6字节：背光电流清空状态
-        status.currentClear = (data[5] == 0x01);
-        
-        // 第7-8字节：驱动电流设定值（实际值*10）
-        quint16 currentRaw = ((quint8)data[6] << 8) | (quint8)data[7];
-        status.setCurrent = currentRaw / 10.0f;
-        
-        // 第9-10字节：最大电流值
-        status.maxCurrent = ((quint8)data[8] << 8) | (quint8)data[9];
-        
-        // 第11-14字节：温度设定值（浮点数）
-        union {
-            float f;
-            quint8 bytes[4];
-        } tempUnion;
-        tempUnion.bytes[0] = (quint8)data[10];
-        tempUnion.bytes[1] = (quint8)data[11];
-        tempUnion.bytes[2] = (quint8)data[12];
-        tempUnion.bytes[3] = (quint8)data[13];
-        status.setTemperature = tempUnion.f;
-        
-        // 第15-18字节：背光电流（浮点数）
-        union {
-            float f;
-            quint8 bytes[4];
-        } currentBgUnion;
-        currentBgUnion.bytes[0] = (quint8)data[14];
-        currentBgUnion.bytes[1] = (quint8)data[15];
-        currentBgUnion.bytes[2] = (quint8)data[16];
-        currentBgUnion.bytes[3] = (quint8)data[17];
-        status.backgroundCurrent = currentBgUnion.f;
-        
-        return true;
+    // 根据命令字解析数据
+    switch (commandCode) {
+        case LASER_CMD_READ_BASIC_INFO:
+            return parseBasicInfo(frame);
+            
+        case LASER_CMD_SET_POWER:
+        case LASER_CMD_LIGHT_CONTROL:
+            return parseSetCommandReply(frame, commandCode);
+            
+        default:
+            qDebug() << "未知命令字:" << QString::number(commandCode, 16);
+            return false;
     }
+}
+
+/**
+ * @brief 解析基本信息应答
+ * @param frame 应答帧
+ * @return 解析成功返回true
+ */
+bool LaserDriver::parseBasicInfo(const QByteArray &frame)
+{
+    // 基本信息报文至少需要25字节数据
+    quint8 dataLen = (quint8)frame[3];
+    if (dataLen < 25) {
+        qDebug() << "基本信息数据长度不足";
+        return false;
+    }
+    
+    // 提取第25字节（索引24）的功率设置方式
+    m_basicInfo.powerSetMode = (quint8)frame[4 + 24];  // 数据从索引4开始
+    
+    qDebug() << QString("%1基本信息 - 功率设置方式:%2 (%3)")
+                .arg(m_deviceName)
+                .arg(m_basicInfo.powerSetMode)
+                .arg(m_basicInfo.powerSetMode == POWER_SET_MODE_CURRENT ? "设置电流" : "设置功率");
     
     return true;
 }
 
-quint8 LaserDriver::calculateChecksum(const QByteArray &data)
+/**
+ * @brief 解析设置命令应答
+ * @param frame 应答帧
+ * @param expectedCmd 期望的命令字
+ * @return 解析成功返回true
+ */
+bool LaserDriver::parseSetCommandReply(const QByteArray &frame, quint8 expectedCmd)
 {
-    quint8 sum = 0;
-    for (int i = 0; i < data.size(); ++i) {
-        sum += (quint8)data[i];
+    quint8 dataLen = (quint8)frame[3];
+    
+    // 设置命令应答数据长度为1字节（命令执行说明）
+    if (dataLen != 1) {
+        qDebug() << "设置命令应答数据长度错误";
+        return false;
     }
-    return ~sum;  // 累加和取反
+    
+    // 提取命令执行说明
+    quint8 execResult = (quint8)frame[4];
+    
+    // 解析执行结果
+    if (execResult == EXEC_SUCCESS) {
+        qDebug() << QString("%1命令执行成功 (0x%2)")
+                    .arg(m_deviceName)
+                    .arg(expectedCmd, 2, 16, QChar('0'));
+        
+        // 更新状态
+        if (expectedCmd == LASER_CMD_LIGHT_CONTROL) {
+            // 0xC1命令的状态需要根据发送的数据来判断
+            // 这里暂时不更新，等待实时信息报文更新
+        }
+        
+        emit statusUpdated(m_currentStatus);
+        return true;
+    } else {
+        // 解析错误信息
+        QStringList errors;
+        if (execResult & EXEC_BELOW_MIN) errors << "超过最小值";
+        if (execResult & EXEC_ABOVE_MAX) errors << "超过最大值";
+        if (execResult & EXEC_INVALID_STATE) errors << "设备当前状态无法执行";
+        if (execResult & EXEC_NO_FUNCTION) errors << "设备无此功能";
+        if (execResult & EXEC_SAVE_ERROR) errors << "保存数据出错";
+        
+        QString errorMsg = QString("%1命令执行失败: %2")
+                          .arg(m_deviceName)
+                          .arg(errors.join(", "));
+        qDebug() << errorMsg;
+        setError(errorMsg);
+        return false;
+    }
 }
 
-bool LaserDriver::setCurrent(float current)
+// ========== 命令函数实现 ==========
+
+/**
+ * @brief 读取基本信息（0xD1命令）
+ * @return 成功返回true
+ */
+bool LaserDriver::readBasicInfo()
 {
     if (!isConnected()) {
         setError("激光器未连接");
         return false;
     }
+    
+    // 构建读取基本信息命令（无数据）
+    QByteArray data;
+    QByteArray frame = buildFrame(LASER_CMD_READ_BASIC_INFO, data);
+    
+    // 发送命令
+    if (m_serialPort->writeData(frame)) {
+        qDebug() << QString("%1读取基本信息").arg(m_deviceName);
+        qDebug() << "发送帧:" << frame.toHex(' ').toUpper();
+        return true;
+    } else {
+        setError("发送读取基本信息命令失败");
+        return false;
+    }
+}
+
+/**
+ * @brief 设置泵浦电流（0xC3命令）
+ * @param current 电流值（mA）
+ * @return 成功返回true
+ */
+bool LaserDriver::setPumpCurrent(quint16 current)
+{
+    if (!isConnected()) {
+        setError("激光器未连接");
+        return false;
+    }
+    
+    // 检查功率设置方式（仅警告，不阻止执行）
+    if (m_basicInfo.powerSetMode != 0 && m_basicInfo.powerSetMode != POWER_SET_MODE_CURRENT) {
+        qDebug() << QString("%1警告: 功率设置方式为%2，不是电流模式(2)，但仍尝试发送0xC3命令")
+                    .arg(m_deviceName)
+                    .arg(m_basicInfo.powerSetMode);
+    }
+    
+    // 构建设置电流命令
+    // 数据域：2字节（16位电流值，单位mA，低字节在前，高字节在后）
+    QByteArray data;
+    quint8 lowByte = current & 0xFF;
+    quint8 highByte = (current >> 8) & 0xFF;
+    data.append(lowByte);   // 低字节在前
+    data.append(highByte);  // 高字节在后
+    
+    QByteArray frame = buildFrame(LASER_CMD_SET_POWER, data);
+    
+    // 发送命令
+    if (m_serialPort->writeData(frame)) {
+        qDebug() << QString("%1设置泵浦电流: %2mA").arg(m_deviceName).arg(current);
+        qDebug() << "发送帧:" << frame.toHex(' ').toUpper();
+        
+        // 更新状态
+        m_currentStatus.setCurrent = current;
+        
+        return true;
+    } else {
+        setError("发送设置泵浦电流命令失败");
+        return false;
+    }
+}
+
+/**
+ * @brief 设置电流（兼容旧接口）
+ * @param current 电流值（实际值，单位根据激光器类型）
+ * @return 成功返回true
+ */
+bool LaserDriver::setCurrent(float current)
+{
+    // 转换为mA并调用setPumpCurrent
+    quint16 currentMa = (quint16)current;
     
     // 根据激光器类型验证电流范围
     QString unit;
@@ -289,15 +415,17 @@ bool LaserDriver::setCurrent(float current)
     switch (m_laserType) {
         case LaserType::SeedSource:
             unit = "mA";
-            maxCurrent = 5000.0f;  // 假设最大5000mA
+            maxCurrent = 5000.0f;
             break;
         case LaserType::FOPO:
             unit = "A";
-            maxCurrent = 50.0f;  // 假设最大50A
+            maxCurrent = 50.0f;
+            // FOPO使用A为单位，需要转换为mA
+            currentMa = (quint16)(current * 1000);
             break;
         case LaserType::Stokes:
             unit = "mA";
-            maxCurrent = 5000.0f;  // 假设最大5000mA
+            maxCurrent = 5000.0f;
             break;
         default:
             setError("未知的激光器类型");
@@ -309,90 +437,39 @@ bool LaserDriver::setCurrent(float current)
         return false;
     }
     
-    // 构建设置电流命令
-    // 数据域：4字节（实际只用2字节，实际值*10）
-    QByteArray data;
-    quint16 currentValue = (quint16)(current * 10);  // 实际值*10
-    data.append((char)((currentValue >> 8) & 0xFF));  // 高字节
-    data.append((char)(currentValue & 0xFF));         // 低字节
-    data.append((char)0x00);  // 填充字节
-    data.append((char)0x00);  // 填充字节
-    
-    QByteArray frame = buildFrame(LASER_CMD_SET_CURRENT, data);
-    
-    // 发送命令
-    if (m_serialPort->writeData(frame)) {
-        qDebug() << QString("%1设置电流: %2%3").arg(m_deviceName).arg(current).arg(unit);
-        qDebug() << "发送帧:" << frame.toHex(' ');
-        return true;
-    } else {
-        setError("发送设置电流命令失败");
-        return false;
-    }
+    return setPumpCurrent(currentMa);
 }
 
+/**
+ * @brief 设置最大电流（已废弃，新协议不支持）
+ * @param maxCurrent 最大电流值
+ * @return 始终返回false
+ */
 bool LaserDriver::setMaxCurrent(float maxCurrent)
 {
-    if (!isConnected()) {
-        setError("激光器未连接");
-        return false;
-    }
-    
-    // 构建设置最大电流命令
-    // 数据域：4字节（实际只用2字节，注意：这里不需要*10，直接使用实际值）
-    QByteArray data;
-    quint16 maxCurrentValue = (quint16)maxCurrent;  // 直接使用实际值，不*10
-    data.append((char)((maxCurrentValue >> 8) & 0xFF));  // 高字节
-    data.append((char)(maxCurrentValue & 0xFF));         // 低字节
-    data.append((char)0x00);  // 填充字节
-    data.append((char)0x00);  // 填充字节
-    
-    QByteArray frame = buildFrame(LASER_CMD_SET_MAX_CURRENT, data);
-    
-    // 发送命令
-    if (m_serialPort->writeData(frame)) {
-        qDebug() << QString("%1设置最大电流: %2").arg(m_deviceName).arg(maxCurrent);
-        qDebug() << "发送帧:" << frame.toHex(' ');
-        return true;
-    } else {
-        setError("发送设置最大电流命令失败");
-        return false;
-    }
+    Q_UNUSED(maxCurrent);
+    setError("新协议不支持设置最大电流");
+    qDebug() << QString("%1: 新协议不支持设置最大电流").arg(m_deviceName);
+    return false;
 }
 
+/**
+ * @brief 设置温度（已废弃，新协议不支持）
+ * @param temperature 温度值
+ * @return 始终返回false
+ */
 bool LaserDriver::setTemperature(float temperature)
 {
-    if (!isConnected()) {
-        setError("激光器未连接");
-        return false;
-    }
-    
-    // 构建设置温度命令
-    // 数据域：4字节（浮点数）
-    QByteArray data;
-    union {
-        float f;
-        quint8 bytes[4];
-    } tempUnion;
-    tempUnion.f = temperature;
-    
-    for (int i = 0; i < 4; ++i) {
-        data.append(tempUnion.bytes[i]);
-    }
-    
-    QByteArray frame = buildFrame(LASER_CMD_SET_TEMPERATURE, data);
-    
-    // 发送命令
-    if (m_serialPort->writeData(frame)) {
-        qDebug() << QString("%1设置温度: %2℃").arg(m_deviceName).arg(temperature);
-        qDebug() << "发送帧:" << frame.toHex(' ');
-        return true;
-    } else {
-        setError("发送设置温度命令失败");
-        return false;
-    }
+    Q_UNUSED(temperature);
+    setError("新协议不支持设置温度");
+    qDebug() << QString("%1: 新协议不支持设置温度").arg(m_deviceName);
+    return false;
 }
 
+/**
+ * @brief 开启激光器（0xC1命令，数据=1）
+ * @return 成功返回true
+ */
 bool LaserDriver::turnOn()
 {
     if (!isConnected()) {
@@ -400,20 +477,15 @@ bool LaserDriver::turnOn()
         return false;
     }
     
-    // 构建开启命令
-    // 数据域：4字节（全为0x00）
+    // 构建开启命令（数据=1表示开启）
     QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
-    QByteArray frame = buildFrame(LASER_CMD_TURN_ON, data);
+    data.append((char)0x01);  // 1=开启
+    QByteArray frame = buildFrame(LASER_CMD_LIGHT_CONTROL, data);
     
     // 发送命令
     if (m_serialPort->writeData(frame)) {
         qDebug() << QString("%1开启激光器").arg(m_deviceName);
-        qDebug() << "发送帧:" << frame.toHex(' ');
+        qDebug() << "发送帧:" << frame.toHex(' ').toUpper();
         return true;
     } else {
         setError("发送开启命令失败");
@@ -421,6 +493,10 @@ bool LaserDriver::turnOn()
     }
 }
 
+/**
+ * @brief 关闭激光器（0xC1命令，数据=0）
+ * @return 成功返回true
+ */
 bool LaserDriver::turnOff()
 {
     if (!isConnected()) {
@@ -428,20 +504,15 @@ bool LaserDriver::turnOff()
         return false;
     }
     
-    // 构建关闭命令
-    // 数据域：4字节（全为0x00）
+    // 构建关闭命令（数据=0表示关闭）
     QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
-    QByteArray frame = buildFrame(LASER_CMD_TURN_OFF, data);
+    data.append((char)0x00);  // 0=关闭
+    QByteArray frame = buildFrame(LASER_CMD_LIGHT_CONTROL, data);
     
     // 发送命令
     if (m_serialPort->writeData(frame)) {
         qDebug() << QString("%1关闭激光器").arg(m_deviceName);
-        qDebug() << "发送帧:" << frame.toHex(' ');
+        qDebug() << "发送帧:" << frame.toHex(' ').toUpper();
         return true;
     } else {
         setError("发送关闭命令失败");
@@ -449,30 +520,13 @@ bool LaserDriver::turnOff()
     }
 }
 
+/**
+ * @brief 查询状态（已废弃，新协议不支持独立的查询状态命令）
+ * @return 始终返回false
+ */
 bool LaserDriver::queryStatus()
 {
-    if (!isConnected()) {
-        setError("激光器未连接");
-        return false;
-    }
-    
-    // 构建查询状态命令
-    // 数据域：4字节（全为0x00）
-    QByteArray data;
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    data.append((char)0x00);
-    
-    QByteArray frame = buildFrame(LASER_CMD_QUERY_STATUS, data);
-    
-    // 发送命令
-    if (m_serialPort->writeData(frame)) {
-        qDebug() << QString("%1查询状态").arg(m_deviceName);
-        qDebug() << "发送帧:" << frame.toHex(' ');
-        return true;
-    } else {
-        setError("发送查询状态命令失败");
-        return false;
-    }
+    setError("新协议不支持独立的查询状态命令，请使用readBasicInfo()");
+    qDebug() << QString("%1: 新协议不支持独立的查询状态命令").arg(m_deviceName);
+    return false;
 }

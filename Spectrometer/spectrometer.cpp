@@ -1,6 +1,8 @@
 #include "spectrometer.h"
 #include <QDebug>
 #include <QThread>
+#include <QCoreApplication>
+#include <QEventLoop>
 
 Spectrometer::Spectrometer(QObject *parent)
     : DeviceBase(parent)
@@ -15,6 +17,11 @@ Spectrometer::Spectrometer(QObject *parent)
     , m_minIntegrationTime(0)
 {
     setDeviceName("奥诺天成光谱仪");
+
+    // 由 SerialPortBase::onReadyRead 已经把数据 readAll 出来，这里订阅信号把数据
+    // 累积到本类自己的缓冲区，避免 receiveResponse 再去 readAll 时拿到空数据。
+    QObject::connect(m_serialPort, &SerialPortBase::dataReceived,
+                     this, &Spectrometer::onSerialDataReceived);
 }
 
 Spectrometer::~Spectrometer()
@@ -38,7 +45,10 @@ bool Spectrometer::connect()
         setError("无法打开串口: " + m_portName);
         return false;
     }
-    
+
+    // 清空可能残留的接收缓冲，避免上一次连接的旧字节干扰握手
+    clearRxBuffer();
+
     // 等待设备稳定
     QThread::msleep(100);
     
@@ -480,18 +490,21 @@ bool Spectrometer::sendCommand(quint8 cmd, const QByteArray &data)
         setError("串口未打开");
         return false;
     }
-    
+
+    // 发送前清空累积缓冲，避免上一次未消费的字节干扰本次响应解析
+    clearRxBuffer();
+
     // 创建命令帧
     SpectrometerFrame frame = SpectrometerFrame::createCommand(cmd, data);
     QByteArray packet = frame.toByteArray();
-    
+
     // 发送数据
     qint64 written = m_serialPort->writeData(packet);
     if (written != packet.size()) {
         setError("发送命令失败");
         return false;
     }
-    
+
     return true;
 }
 
@@ -501,34 +514,43 @@ bool Spectrometer::receiveResponse(SpectrometerFrame &frame, int timeout)
         setError("串口未打开");
         return false;
     }
-    
-    QByteArray buffer;
+
     QElapsedTimer timer;
     timer.start();
-    
+
+    // 由 onSerialDataReceived 把串口数据写入 m_rxBuffer，本函数仅做轮询解析。
+    // 这样即使 SerialPortBase::onReadyRead 已经先把数据 readAll 走，
+    // 数据也已经通过 dataReceived 信号转存到了 m_rxBuffer，不会再丢失。
     while (timer.elapsed() < timeout) {
-        // 等待数据
-        QThread::msleep(10);
-        
-        // 读取数据
-        QByteArray newData = m_serialPort->readAll();
-        if (!newData.isEmpty()) {
-            buffer.append(newData);
-            
-            // 尝试解析
-            if (buffer.size() >= 6) {  // 最小帧长度
-                if (SpectrometerFrame::parse(buffer, frame)) {
-                    return true;
-                }
+        // 让事件循环有机会派发 dataReceived 信号到 onSerialDataReceived
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+
+        if (m_rxBuffer.size() >= 6) {  // 最小帧长度
+            if (SpectrometerFrame::parse(m_rxBuffer, frame)) {
+                return true;
             }
         }
-        
-        // 检查是否超时
-        if (timer.elapsed() >= timeout) {
-            break;
-        }
+
+        QThread::msleep(5);
     }
-    
+
     setError("接收响应超时");
     return false;
+}
+
+void Spectrometer::onSerialDataReceived(const QByteArray &data)
+{
+    if (data.isEmpty()) {
+        return;
+    }
+    m_rxBuffer.append(data);
+}
+
+void Spectrometer::clearRxBuffer()
+{
+    m_rxBuffer.clear();
+    if (m_serialPort && m_serialPort->isOpen()) {
+        // 把 QSerialPort 内部已经到达但尚未触发 readyRead 的字节也清掉
+        m_serialPort->readAll();
+    }
 }
