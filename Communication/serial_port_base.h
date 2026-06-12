@@ -77,6 +77,19 @@ public:
      * @brief 读取所有可用数据
      */
     QByteArray readAll();
+
+    /**
+     * @brief 清空接收缓冲区（发送命令前调用，避免读到上一条残留响应）
+     */
+    void clearReadBuffer();
+
+    /**
+     * @brief 阻塞读取一帧应答（基于内部缓冲区，兼容 readyRead 异步槽）
+     * @param timeoutMs 最大等待毫秒数
+     * @param expectedMinSize 期望的最小帧长度，达到后立即返回；为0时按超时返回累积数据
+     * @return 收到的应答字节
+     */
+    QByteArray readResponse(int timeoutMs, int expectedMinSize = 0);
     
     /**
      * @brief 获取串口名称
@@ -118,6 +131,7 @@ protected:
     SerialConfig m_config;
     int m_readTimeout;
     int m_writeTimeout;
+    QByteArray m_readBuffer;   // 接收缓冲区：onReadyRead 累积数据，readResponse 从此读取
 };
 
 #endif // SERIAL_PORT_BASE_H

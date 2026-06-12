@@ -24,13 +24,25 @@ const quint8 DELAY_FRAME_START = 0xFC;  // 起始码
 const quint8 DELAY_FRAME_END   = 0xFE;  // 结束码
 
 // 功能码定义（严格按用户文档协议）
+const quint8 DELAY_CMD_SET_SPEED   = 0x02;  // 设置速度（0x12最快~0xFF最慢）
 const quint8 DELAY_CMD_SET_DELAY   = 0x04;  // 设置时间延迟（绝对位置，PS×1000→3字节）
+const quint8 DELAY_CMD_INC_STEP    = 0x05;  // 增加步进（相对正向移动）
+const quint8 DELAY_CMD_DEC_STEP    = 0x06;  // 减小步进（相对反向移动）
 const quint8 DELAY_CMD_HOME        = 0x07;  // 归零
 const quint8 DELAY_CMD_STOP        = 0x0B;  // 停止运动
 const quint8 DELAY_CMD_QUERY_POS   = 0x0E;  // 查询当前位置
+const quint8 DELAY_CMD_SAVE_EPROM  = 0x0F;  // 保存到EPROM（不保存断电丢配置）
+const quint8 DELAY_CMD_REALTIME    = 0x39;  // 开/关实时位置上报
 
 // 响应标识
 const quint8 DELAY_RESPONSE_POS = 0xAA;     // 位置查询响应
+
+// 帧固定长度
+const int DELAY_FRAME_LENGTH = 7;           // FC + ID + CMD + D2 + D1 + D0 + FE
+
+// 实时上报开关的固定数据域前缀
+const quint8 DELAY_REALTIME_PREFIX_D0 = 0x05;
+const quint8 DELAY_REALTIME_PREFIX_D1 = 0x06;
 
 /**
  * @brief 延时线状态结构

@@ -2,19 +2,17 @@
 #define STAGE_CONTROLLER_H
 
 #include "../Communication/device_base.h"
-#include "../Communication/serial_port_base.h"
-#include "stage_protocol.h"
+#include "stage_protocol.h"      // 保留旧结构体 EllxDeviceInfo/StageStatus，兼容现有外部读取接口
+#include "mt_axis_config.h"
+#include <QSerialPort>
+#include <QTimer>
 
 /**
- * @brief Thorlabs ELLx 双台位移台控制器（双串口聚合）
+ * @brief MT_API 运动控制卡双轴位移台控制器
  *
- * 物理拓扑：两台同型号 ELLx 位移台分别接在两根独立串口上：
- *   台1 → 串口1（如 COM3）
- *   台2 → 串口2（如 COM4）
- * 每台都按 ELLx 单台协议通信（地址固定使用 '0'）。
- *
- * 业务接口以 *Dual() 命名：内部依次对两个串口下发同一指令，
- * 让两台同步执行同一动作（典型用法：双台同步绝对位移）。
+ * 业务用途：替换旧 Thorlabs ELLx 双串口 ASCII 协议，改为一张 MT_API 控制卡 + 两个轴。
+ * 兼容策略：保留 openPort1/openPort2/closePort1/closePort2 等旧接口，避免 UI 层立即大改。
+ * 单位约定：moveAbsoluteDual() 新语义为 μm；setMaxSpeedUmPerSec() 接收 μm/s。
  */
 class StageController : public DeviceBase
 {
@@ -24,13 +22,17 @@ public:
     explicit StageController(QObject *parent = nullptr);
     ~StageController();
 
-    // ========== 基类接口（语义：两台都连接才算 Connected） ==========
+    // ========== 基类接口（一张控制卡连接成功即 Stage1/Stage2 均可用） ==========
     bool connect() override;
     void disconnect() override;
     bool isConnected() const override;
     QString getDeviceInfo() const override;
 
-    // ========== 双串口连接接口 ==========
+    // ========== 新版单串口控制卡接口 ==========
+    void setPortName(const QString &port);
+    QString portName() const;
+
+    // ========== 旧双串口接口兼容壳（供现有 UI/integration.cpp 调用） ==========
     bool openPort1(const QString &portName,
                    qint32 baudRate = 9600,
                    QSerialPort::DataBits dataBits = QSerialPort::Data8,
@@ -43,43 +45,43 @@ public:
                    QSerialPort::StopBits stopBits = QSerialPort::OneStop);
     void closePort1();
     void closePort2();
-
     bool isConnected1() const;
     bool isConnected2() const;
 
-    // ========== 双台同步控制接口 ==========
-
-    /** 读取双台换算参数（0in），必须在 moveAbsoluteDual 之前调用 */
+    // ========== 双轴同步控制接口 ==========
     bool readDeviceInfoDual();
-
-    /** 设置双台最大速度（sv 指令） */
-    bool setMaxSpeedDual(qint32 speedPulses);
-
-    /** 双台同步绝对位移（ma 指令）：按各自的 pulsePerUnit 各算一次脉冲数 */
-    bool moveAbsoluteDual(double positionMm);
-
+    bool setMaxSpeedDual(qint32 speedPulsesPerSec);       // 兼容旧接口：直接接收 pulse/s
+    bool setMaxSpeedUmPerSec(double umPerSec);            // 新接口：接收 μm/s，内部换算 pulse/s
+    bool moveAbsoluteDual(double displacementUm);         // 新语义：接收 μm，内部换算 pulse
     bool queryStatusDual();
     bool queryPositionDual();
     bool stopDual();
-    /** 双台回零（ho），direction：0=顺时针，1=逆时针 */
-    bool homeDual(quint8 direction = 0);
+    bool haltDual();
+    bool homeDual(quint8 direction = 0);                  // 兼容旧签名，实际按配置回零方向执行
 
-    // ========== 单台调试接口（可选） ==========
-    bool moveAbsolute1(double positionMm);
-    bool moveAbsolute2(double positionMm);
+    // ========== 单轴调试接口（兼容旧接口，参数新语义为 μm） ==========
+    bool moveAbsolute1(double displacementUm);
+    bool moveAbsolute2(double displacementUm);
 
+    // ========== 单轴独立控制接口（双轴可分别设速度/位移/停止） ==========
+    // axis: 0=轴1, 1=轴2。speed 单位 μm/s，位移单位 μm。
+    bool setAxisSpeedUmPerSec(unsigned short axis, double umPerSec);  // 设置指定轴运动速度
+    bool stopAxis(unsigned short axis);                              // 停止指定轴（减速停止）
+
+    // ========== 查询接口 ==========
     const EllxDeviceInfo &deviceInfo1() const { return m_info1; }
     const EllxDeviceInfo &deviceInfo2() const { return m_info2; }
-    qint32 positionPulses1() const { return m_status1.positionPulses; }
-    qint32 positionPulses2() const { return m_status2.positionPulses; }
+    qint32 positionPulses1() const { return m_axisPos[0]; }
+    qint32 positionPulses2() const { return m_axisPos[1]; }
+    double positionUm1() const { return MtAxisConfig::pulsesToUm(m_axisPos[0]); }
+    double positionUm2() const { return MtAxisConfig::pulsesToUm(m_axisPos[1]); }
+    bool isMoving1() const { return m_axisRunning[0]; }
+    bool isMoving2() const { return m_axisRunning[1]; }
 
 signals:
-    // 单台位置变化
     void positionChanged1(qint32 positionPulses);
     void positionChanged2(qint32 positionPulses);
-    // 双台都完成才发射（用于"双台同步移动完成"）
     void moveCompletedDual();
-    // 单台连接/断开（供 UI 各自显示状态指示器）
     void stage1Connected();
     void stage1Disconnected();
     void stage2Connected();
@@ -87,42 +89,31 @@ signals:
     void deviceInfoReceived(QString info);
 
 private slots:
-    void onSerial1DataReceived(const QByteArray &data);
-    void onSerial2DataReceived(const QByteArray &data);
-    void onSerial1Connected();
-    void onSerial1Disconnected();
-    void onSerial1Error(const QString &error);
-    void onSerial2Connected();
-    void onSerial2Disconnected();
-    void onSerial2Error(const QString &error);
+    void onPollTimer();
 
 private:
-    bool sendFrame1(const QByteArray &frame);
-    bool sendFrame2(const QByteArray &frame);
-    // stageIndex: 1=台1, 2=台2
-    void parseLine(int stageIndex, const QString &line);
-    void parseInfoLine(int stageIndex, const QString &resp);
-    void parseStatusLine(int stageIndex, const QString &resp);
-    void parsePositionLine(int stageIndex, const QString &resp);
+    enum class PendingAction { None, Move, Home };
+
+    bool configureAxis(unsigned short axis);
+    bool checkResult(int result, const QString &action);
+    bool moveAbsoluteAxis(unsigned short axis, double displacementUm);
+    void resetRuntimeState();
 
 private:
-    SerialPortBase  *m_serial1;
-    SerialPortBase  *m_serial2;
-    QString          m_portName1;
-    qint32           m_baudRate1;
-    QString          m_portName2;
-    qint32           m_baudRate2;
-    QByteArray       m_recvBuf1;
-    QByteArray       m_recvBuf2;
+    QString m_portName;
+    bool m_cardOpen;
+    bool m_axisRunning[2];
+    bool m_axisPending[2];
+    bool m_axisObservedRunning[2];   // 防误完成：本次任务中是否已经观察到轴进入运行状态
+    qint32 m_axisPos[2];
+    int m_speedPPS;
+    int m_axisSpeedPPS[2];           // 每轴独立运动速度（pulse/s），供单轴独立控制使用
+    QTimer *m_pollTimer;
+    PendingAction m_pendingAction;
 
-    EllxDeviceInfo   m_info1;
-    EllxDeviceInfo   m_info2;
-    StageStatus      m_status1;
-    StageStatus      m_status2;
-
-    // moveAbsoluteDual 后跟踪两台 PO 响应，凑齐才发 moveCompletedDual
-    bool             m_pendingMove1;
-    bool             m_pendingMove2;
+    // 兼容旧 deviceInfo1()/deviceInfo2() 返回结构。MT_API 下 pulsePerUnit 用 pulse/μm 表示。
+    EllxDeviceInfo m_info1;
+    EllxDeviceInfo m_info2;
 };
 
 #endif // STAGE_CONTROLLER_H

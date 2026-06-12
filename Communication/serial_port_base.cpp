@@ -1,6 +1,9 @@
 #include "serial_port_base.h"
 #include <QDebug>
 #include <QThread>
+#include <QElapsedTimer>
+#include <QCoreApplication>
+#include <QEventLoop>
 
 SerialPortBase::SerialPortBase(QObject *parent)
     : QObject(parent)
@@ -122,6 +125,41 @@ QByteArray SerialPortBase::readAll()
     return m_serialPort->readAll();
 }
 
+void SerialPortBase::clearReadBuffer()
+{
+    m_readBuffer.clear();
+    if (m_serialPort->isOpen()) {
+        m_serialPort->readAll();  // 同时丢弃驱动层残留数据
+    }
+}
+
+QByteArray SerialPortBase::readResponse(int timeoutMs, int expectedMinSize)
+{
+    // 基于缓冲区的同步读取：与 onReadyRead 异步槽共存，
+    // 通过 processEvents 驱动 readyRead 把数据存入 m_readBuffer，避免 waitForReadyRead 抢数据导致超时。
+    if (!m_serialPort->isOpen()) {
+        return QByteArray();
+    }
+
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < timeoutMs) {
+        // 先把驱动层可能已到达但未触发槽的数据同步进缓冲区
+        if (m_serialPort->bytesAvailable() > 0) {
+            m_readBuffer.append(m_serialPort->readAll());
+        }
+        if (expectedMinSize > 0 && m_readBuffer.size() >= expectedMinSize) {
+            break;
+        }
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+        QThread::msleep(5);
+    }
+
+    QByteArray response = m_readBuffer;
+    m_readBuffer.clear();
+    return response;
+}
+
 QString SerialPortBase::portName() const
 {
     return m_serialPort->portName();
@@ -156,6 +194,7 @@ void SerialPortBase::onReadyRead()
 {
     QByteArray data = m_serialPort->readAll();
     if (!data.isEmpty()) {
+        m_readBuffer.append(data);   // 累积到缓冲区，供 readResponse 同步读取
         emit dataReceived(data);
     }
 }

@@ -1,6 +1,7 @@
 ﻿#include "integration.h"
 #include "ui_integration.h"
 #include "Communication/serial_port_base.h"
+#include "StageController/mt_api_bridge.h"
 #include "../LaserDriver/ohld_protocol.h"
 #include <QMessageBox>
 #include <QDebug>
@@ -34,6 +35,33 @@
 #include <QMenu>
 #include <QAction>
 #include <QtCharts/QChartView>
+
+
+namespace {
+QByteArray readKntFrameNonFatal(SerialPortBase *port, const QByteArray &frame)
+{
+    // 科乃特串口安全读写：清空缓冲→发送→先读帧头确定长度，再补齐到完整帧，避免串包错位。
+    if (!port || !port->isOpen()) return QByteArray();
+
+    port->clearReadBuffer(); // 清空旧残留，避免上一条命令应答影响本次解析
+    if (port->writeData(frame) != frame.size()) return QByteArray();
+
+    // 1) 先读到至少4字节：帧头2 + 命令1 + 数据长度1
+    QByteArray resp = port->readResponse(400, 4);
+    if (resp.size() < 4) return resp;
+
+    // 2) 完整帧长 = 帧头2 + 命令1 + 长度1 + 数据N + 校验2
+    const int fullLen = 4 + static_cast<quint8>(resp.at(3)) + 2;
+
+    // 3) 循环补齐剩余字节，设备无后续数据则跳出
+    while (resp.size() < fullLen) {
+        const QByteArray more = port->readResponse(150, fullLen - resp.size());
+        if (more.isEmpty()) break;
+        resp.append(more);
+    }
+    return resp;
+}
+}
 
 Integration::Integration(QWidget *parent)
     : QMainWindow(parent)
@@ -98,6 +126,8 @@ Integration::Integration(QWidget *parent)
     // 初始化四泵串口指针和状态
     for (int i = 0; i < 4; ++i) {
         m_ohldPumps[i] = nullptr;
+        m_kntPollTimer[i] = nullptr;
+        m_kntBusy[i] = false;
     }
 
     ui->setupUi(this);
@@ -155,15 +185,36 @@ void Integration::initDevices()
 
     // 创建其他设备实例
     m_stageController = new StageController(this);
+
+    // 加载 MT_API.dll（运动控制卡动态库）。DLL需放在 Integration.exe 同目录。
+    // 若加载失败，程序仍可启动；连接位移台时会通过 m_stageController->getLastError() 提示。
+    const QString mtDllPath = QCoreApplication::applicationDirPath() + "/MT_API.dll";
+    if (!MtApiBridge::instance().load(mtDllPath)) {
+        qWarning() << "MT_API.dll 加载失败:" << MtApiBridge::instance().lastError();
+    } else {
+        qDebug() << "MT_API.dll 加载成功:" << mtDllPath;
+        // USB 即插即用：DLL 就绪后延迟自动连接控制卡，无需用户手动选串口/点连接。
+        // 延迟到事件循环启动后执行，确保状态指示灯控件已初始化。
+        QTimer::singleShot(0, this, &Integration::on_btnConnectStage1_clicked);
+    }
+
     m_galvoMirror = new GalvoMirror(this);  // 创建振镜控制卡实例
     m_delayLine = new DelayLine(this);
     m_delayLine->setDeviceId(0x01);   // 延迟线1，设备ID=1
     m_delayLine2 = new DelayLine(this);
-    m_delayLine2->setDeviceId(0x02);  // 延迟线2，设备ID=2，独立串口
+    // 【验证用】两路为独立COM口，硬件出厂默认ID多为0x01；临时与延迟线1同ID用于验证
+    // 收发帧均按0x01寻址。若验证后两台硬件ID确实不同，再改回各自实际ID。
+    m_delayLine2->setDeviceId(0x01);  // 延迟线2，临时设为ID=1（独立串口）
 
-    // 创建 OHLD 四泵独立串口实例
+    // 创建 OHLD 四泵独立串口实例 + 实时电流轮询定时器
     for (int i = 0; i < 4; ++i) {
         m_ohldPumps[i] = new SerialPortBase(this);
+
+        m_kntPollTimer[i] = new QTimer(this);
+        m_kntPollTimer[i]->setInterval(500);  // 每500ms轮询一次实时电流
+        connect(m_kntPollTimer[i], &QTimer::timeout, this, [this, i]() {
+            pollOhldPumpCurrent(i);
+        });
     }
 
     // 创建工具实例
@@ -217,34 +268,20 @@ void Integration::initUI()
     initStatusIndicators();
 
     // 设置所有输入框居中对齐
-    // 振镜页输入框
+    // 振镜页输入框（OHLD 三泵：种子源 / FOPO预放 / Stokes，无主级泵）
     ui->lineEditTimeDelay->setAlignment(Qt::AlignCenter);
     ui->lineEditGalvoPump1->setAlignment(Qt::AlignCenter);
     ui->lineEditGalvoPump2->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoPump3->setAlignment(Qt::AlignCenter);
     ui->lineEditGalvoPump4->setAlignment(Qt::AlignCenter);
 
-    // 振镜页打标控制输入框（按文档协议）
-    ui->lineEditGalvoLaserPower->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoFrequency->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoDutyCycle->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoMarkV->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoJumpV->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoScanTimes->setAlignment(Qt::AlignCenter);
+    // 振镜页角度控制输入框（复用原 lineEditGalvoPointX，语义改为目标角度 deg）
     ui->lineEditGalvoPointX->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoPointY->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoPointTime->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoLineStartX->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoLineStartY->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoLineEndX->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoLineEndY->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoCircleX->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoCircleY->setAlignment(Qt::AlignCenter);
-    ui->lineEditGalvoCircleR->setAlignment(Qt::AlignCenter);
 
     // 位移台页输入框
     ui->lineEditStageSpeed->setAlignment(Qt::AlignCenter);
     ui->lineEditStageDisplace->setAlignment(Qt::AlignCenter);
+    ui->lineEditStageSpeed2->setAlignment(Qt::AlignCenter);
+    ui->lineEditStageDisplace2->setAlignment(Qt::AlignCenter);
     ui->lineEditStageDelayLine1->setAlignment(Qt::AlignCenter);
     ui->lineEditStageDelayLine2->setAlignment(Qt::AlignCenter);
     ui->lineEditStagePump1->setAlignment(Qt::AlignCenter);
@@ -296,12 +333,6 @@ void Integration::initConnections()
     connect(m_stageController, &StageController::stage1Disconnected, this, [this]() {
         updateStatusIndicator(ui->labelStage1Status, DeviceStatus::Disconnected);
     });
-    connect(m_stageController, &StageController::stage2Connected, this, [this]() {
-        updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Connected);
-    });
-    connect(m_stageController, &StageController::stage2Disconnected, this, [this]() {
-        updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Disconnected);
-    });
 
     // 连接振镜控制卡信号
     connect(m_galvoMirror, &GalvoMirror::statusChanged,
@@ -309,7 +340,7 @@ void Integration::initConnections()
     connect(m_galvoMirror, &GalvoMirror::errorOccurred,
             this, &Integration::onDeviceError);
     connect(m_galvoMirror, &GalvoMirror::messageLog,
-            this, &Integration::onGalvoMessageLog);
+            this, [](const QString &msg) { qDebug() << "振镜日志:" << msg; });
     connect(m_galvoMirror, &GalvoMirror::heartbeatChanged,
             this, &Integration::onGalvoHeartbeatChanged);
 
@@ -320,6 +351,9 @@ void Integration::initConnections()
             this, &Integration::onDeviceError);
     connect(m_delayLine, &DelayLine::delayChanged,
             this, &Integration::onDelayChanged);
+    // 实时位置更新（位移台页延迟线1）
+    connect(m_delayLine, &DelayLine::positionUpdated,
+            this, &Integration::onDelayLine1PositionUpdated);
 
     // 连接延时线2信号
     connect(m_delayLine2, &DelayLine::statusChanged,
@@ -328,6 +362,15 @@ void Integration::initConnections()
             this, &Integration::onDeviceError);
     connect(m_delayLine2, &DelayLine::delayChanged,
             this, &Integration::onDelay2Changed);
+    // 实时位置更新（位移台页延迟线2）
+    connect(m_delayLine2, &DelayLine::positionUpdated,
+            this, &Integration::onDelayLine2PositionUpdated);
+
+    // 位移台页延迟线归零按钮
+    connect(ui->btnStageDelayLine1Home, &QPushButton::clicked,
+            this, &Integration::on_btnStageDelayLine1Home_clicked);
+    connect(ui->btnStageDelayLine2Home, &QPushButton::clicked,
+            this, &Integration::on_btnStageDelayLine2Home_clicked);
 
     // 连接测量定时器
     connect(m_measureTimerFOPO, &QTimer::timeout,
@@ -417,8 +460,6 @@ void Integration::initSerialPortCombos()
     // 初始化所有串口下拉框
     populateSerialPortCombo(ui->comboBoxSpectrometerFOPOPort);
     populateSerialPortCombo(ui->comboBoxSpectrometerStokesPort);
-    populateSerialPortCombo(ui->comboBoxStage1Port);
-    populateSerialPortCombo(ui->comboBoxStage2Port);
     populateSerialPortCombo(ui->comboBoxDelayPort);
     populateSerialPortCombo(ui->comboBoxDelay2Port);
     populateSerialPortCombo(ui->comboBoxPump1Port);
@@ -429,8 +470,6 @@ void Integration::initSerialPortCombos()
     // 初始化波特率下拉框
     populateBaudRateCombo(ui->comboBoxSpectrometerFOPOBaudRate);
     populateBaudRateCombo(ui->comboBoxSpectrometerStokesBaudRate);
-    populateBaudRateCombo(ui->comboBoxStage1BaudRate);
-    populateBaudRateCombo(ui->comboBoxStage2BaudRate);
     populateBaudRateCombo(ui->comboBoxDelayBaudRate);
     populateBaudRateCombo(ui->comboBoxDelay2BaudRate);
     populateBaudRateCombo(ui->comboBoxPump1BaudRate);
@@ -441,8 +480,6 @@ void Integration::initSerialPortCombos()
     // 设置默认波特率
     ui->comboBoxSpectrometerFOPOBaudRate->setCurrentText("115200");
     ui->comboBoxSpectrometerStokesBaudRate->setCurrentText("115200");
-    ui->comboBoxStage1BaudRate->setCurrentText("9600");
-    ui->comboBoxStage2BaudRate->setCurrentText("9600");
     ui->comboBoxDelayBaudRate->setCurrentText("9600");
     ui->comboBoxDelay2BaudRate->setCurrentText("9600");
     ui->comboBoxPump1BaudRate->setCurrentText("9600");
@@ -531,7 +568,6 @@ void Integration::initStatusIndicators()
     updateStatusIndicator(ui->labelSpectrometerFOPOStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelSpectrometerStokesStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelStage1Status, DeviceStatus::Disconnected);
-    updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelGalvoStatus, DeviceStatus::Disconnected);
     updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Disconnected);
 
@@ -636,96 +672,42 @@ void Integration::on_btnDisconnectSpectrometerFOPO_clicked()
     updateStatusBar("光谱仪已断开");
 }
 
-// ========== 位移台连接/断开槽函数（双串口） ==========
+// ========== 位移台连接/断开槽函数（USB 单卡双轴） ==========
 
 void Integration::on_btnConnectStage1_clicked()
 {
-    SerialConfig config = getStageSerialConfig1();
-
-    if (config.portName.isEmpty()) {
-        QMessageBox::warning(this, "连接失败",
-            "位移台1：请先选择串口设备！\n\n请在串口下拉框中选择一个可用的串口。");
+    // MT_API 新位移台：USB 即插即用，无需选择串口号/波特率，直接连接整张运动控制卡（双轴）。
+    if (m_stageController->isConnected()) {
+        updateStatusBar("运动控制卡已连接（双轴就绪）");
         return;
     }
 
     updateStatusIndicator(ui->labelStage1Status, DeviceStatus::Connecting);
-    updateStatusBar("位移台1 正在连接...");
+    updateStatusBar("运动控制卡正在连接（USB）...");
     QCoreApplication::processEvents();
 
-    QTimer::singleShot(50, this, [this, config]() {
-        bool success = m_stageController->openPort1(
-            config.portName,
-            config.baudRate,
-            config.dataBits,
-            config.parity,
-            config.stopBits
-        );
+    QTimer::singleShot(50, this, [this]() {
+        bool success = m_stageController->connect();
         QCoreApplication::processEvents();
 
         if (success) {
-            updateStatusBar("位移台1 连接成功");
+            updateStatusBar("运动控制卡连接成功（双轴已就绪）");
             updateStatusIndicator(ui->labelStage1Status, DeviceStatus::Connected);
-            qDebug() << "位移台1 连接成功";
+            qDebug() << "运动控制卡(USB)连接成功";
         } else {
-            updateStatusBar("位移台1 连接失败");
+            updateStatusBar("运动控制卡连接失败（请检查 USB 连接）");
             updateStatusIndicator(ui->labelStage1Status, DeviceStatus::Error);
-            qDebug() << "位移台1 连接失败：" << m_stageController->getLastError();
-            QMessageBox::warning(this, "连接失败",
-                "位移台1 连接失败：" + m_stageController->getLastError());
+            qDebug() << "运动控制卡连接失败：" << m_stageController->getLastError();
         }
     });
 }
 
 void Integration::on_btnDisconnectStage1_clicked()
 {
-    m_stageController->closePort1();
+    // MT_API 新位移台：断开整张运动控制卡（USB），双轴状态同步置断开。
+    m_stageController->disconnect();
     updateStatusIndicator(ui->labelStage1Status, DeviceStatus::Disconnected);
-    updateStatusBar("位移台1 已断开");
-}
-
-void Integration::on_btnConnectStage2_clicked()
-{
-    SerialConfig config = getStageSerialConfig2();
-
-    if (config.portName.isEmpty()) {
-        QMessageBox::warning(this, "连接失败",
-            "位移台2：请先选择串口设备！\n\n请在串口下拉框中选择一个可用的串口。");
-        return;
-    }
-
-    updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Connecting);
-    updateStatusBar("位移台2 正在连接...");
-    QCoreApplication::processEvents();
-
-    QTimer::singleShot(50, this, [this, config]() {
-        bool success = m_stageController->openPort2(
-            config.portName,
-            config.baudRate,
-            config.dataBits,
-            config.parity,
-            config.stopBits
-        );
-        QCoreApplication::processEvents();
-
-        if (success) {
-            updateStatusBar("位移台2 连接成功");
-            updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Connected);
-            qDebug() << "位移台2 连接成功";
-        } else {
-            updateStatusBar("位移台2 连接失败");
-            updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Error);
-            qDebug() << "位移台2 连接失败：" << m_stageController->getLastError();
-            QMessageBox::warning(this, "连接失败",
-                "位移台2 连接失败：" + m_stageController->getLastError());
-        }
-    });
-}
-
-void Integration::on_btnDisconnectStage2_clicked()
-{
-    m_stageController->closePort2();
-    updateStatusIndicator(ui->labelStage2Status, DeviceStatus::Disconnected);
-    updateStatusBar("位移台2 已断开");
+    updateStatusBar("运动控制卡已断开");
 }
 
 // ========== 振镜连接/断开槽函数 ==========
@@ -786,95 +768,98 @@ void Integration::on_btnDisconnectGalvo_clicked()
 
 void Integration::on_btnConnectDelay_clicked()
 {
-    SerialConfig config = getDelayLineSerialConfig();
+    // 统一连接按钮：延迟线1、延迟线2 各自独立连接，互不影响。
+    // 入参：分别读取各自串口/波特率配置；未选串口的那条线跳过，不影响另一条。
+    SerialConfig cfg1 = getDelayLineSerialConfig();
+    SerialConfig cfg2 = getDelayLineSerialConfig2();
 
-    // 检查是否选择了串口
-    if (config.portName.isEmpty()) {
+    // 两条线都未选串口，提示后返回
+    if (cfg1.portName.isEmpty() && cfg2.portName.isEmpty()) {
         QMessageBox::warning(this, "连接失败",
-            "延时线：请先选择串口设备！\n\n请在串口下拉框中选择一个可用的串口。");
+            "延时线：请至少为延迟线1或延迟线2选择一个串口设备！");
         return;
     }
 
-    // 显示连接中状态
-    updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Connecting);
-    updateStatusBar("延时线正在连接...");
-
-    // 处理 UI 事件
-    QCoreApplication::processEvents();
-
-    // 使用 QTimer 异步执行连接操作
-    QTimer::singleShot(50, this, [this, config]() {
-        bool success = m_delayLine->openPort(
-            config.portName,
-            config.baudRate,
-            config.dataBits,
-            config.parity,
-            config.stopBits
-        );
-
-        // 处理 UI 事件
+    // ---- 延迟线1：仅当选择了串口才连接 ----
+    if (!cfg1.portName.isEmpty()) {
+        updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Connecting);
+        updateStatusBar("延迟线1正在连接...");
         QCoreApplication::processEvents();
 
-        if (success) {
-            // openPort 已成功打开串口；DeviceBase::isConnected() 会基于
-            // SerialPortBase::isOpen() 返回 true，无需再调用 connect() 重开。
-            updateStatusBar("延时线连接成功");
-            updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Connected);
-            qDebug() << "延时线连接成功";
-        } else {
-            updateStatusBar("延时线连接失败");
-            updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Error);
-            qDebug() << "延时线连接失败：" << m_delayLine->getLastError();
-            QMessageBox::warning(this, "连接失败", "延时线连接失败：" + m_delayLine->getLastError());
+        QTimer::singleShot(50, this, [this, cfg1]() {
+            bool success = m_delayLine->openPort(
+                cfg1.portName, cfg1.baudRate,
+                cfg1.dataBits, cfg1.parity, cfg1.stopBits
+            );
+            QCoreApplication::processEvents();
+
+            if (success) {
+                // openPort 成功即视为已连接，启动100ms位置轮询
+                updateStatusBar("延迟线1连接成功");
+                updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Connected);
+                m_delayLine->startPolling(100);
+                qDebug() << "延迟线1连接成功:" << cfg1.portName;
+            } else {
+                updateStatusBar("延迟线1连接失败");
+                updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Error);
+                QMessageBox::warning(this, "连接失败", "延迟线1连接失败：" + m_delayLine->getLastError());
+            }
+        });
+    }
+
+    // ---- 延迟线2：仅当选择了串口才连接 ----
+    if (!cfg2.portName.isEmpty()) {
+        // 同口防呆：两路延迟线为独立 COM 口，禁止选同一个串口
+        // （同一 COM 不能被打开两次，否则延迟线2 必然连接失败）
+        if (!cfg1.portName.isEmpty() && cfg1.portName == cfg2.portName) {
+            updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Error);
+            updateStatusBar("延迟线2连接失败：与延迟线1串口冲突");
+            QMessageBox::warning(this, "连接失败",
+                QString("延迟线2 与延迟线1 选择了同一个串口（%1）！\n\n"
+                        "两路延迟线为独立串口，请为延迟线2 选择其他 COM 口。")
+                    .arg(cfg2.portName));
+            return;
         }
-    });
+
+        updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Connecting);
+        updateStatusBar("延迟线2正在连接...");
+        QCoreApplication::processEvents();
+
+        QTimer::singleShot(50, this, [this, cfg2]() {
+            bool success = m_delayLine2->openPort(
+                cfg2.portName, cfg2.baudRate,
+                cfg2.dataBits, cfg2.parity, cfg2.stopBits
+            );
+            QCoreApplication::processEvents();
+
+            if (success) {
+                updateStatusBar("延迟线2连接成功");
+                updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Connected);
+                m_delayLine2->startPolling(100);
+                qDebug() << "延迟线2连接成功:" << cfg2.portName;
+            } else {
+                updateStatusBar("延迟线2连接失败");
+                updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Error);
+                QMessageBox::warning(this, "连接失败", "延迟线2连接失败：" + m_delayLine2->getLastError());
+            }
+        });
+    }
 }
 
 void Integration::on_btnDisconnectDelay_clicked()
 {
-    m_delayLine->disconnect();
-    updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Disconnected);
-    updateStatusBar("延时线1已断开");
-}
-
-void Integration::on_btnConnectDelay2_clicked()
-{
-    SerialConfig config = getDelayLineSerialConfig2();
-
-    if (config.portName.isEmpty()) {
-        QMessageBox::warning(this, "连接失败",
-            "延时线2：请先选择串口设备！");
-        return;
+    // 统一断开按钮：仅断开当前处于连接状态的延迟线，先停轮询再断开
+    if (m_delayLine && m_delayLine->isConnected()) {
+        m_delayLine->stopPolling();
+        m_delayLine->disconnect();
+        updateStatusIndicator(ui->labelDelayStatus, DeviceStatus::Disconnected);
     }
-
-    updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Connecting);
-    updateStatusBar("延时线2正在连接...");
-    QCoreApplication::processEvents();
-
-    QTimer::singleShot(50, this, [this, config]() {
-        bool success = m_delayLine2->openPort(
-            config.portName, config.baudRate,
-            config.dataBits, config.parity, config.stopBits
-        );
-        QCoreApplication::processEvents();
-
-        if (success) {
-            updateStatusBar("延时线2连接成功");
-            updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Connected);
-            qDebug() << "延时线2连接成功";
-        } else {
-            updateStatusBar("延时线2连接失败");
-            updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Error);
-            QMessageBox::warning(this, "连接失败", "延时线2连接失败：" + m_delayLine2->getLastError());
-        }
-    });
-}
-
-void Integration::on_btnDisconnectDelay2_clicked()
-{
-    m_delayLine2->disconnect();
-    updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Disconnected);
-    updateStatusBar("延时线2已断开");
+    if (m_delayLine2 && m_delayLine2->isConnected()) {
+        m_delayLine2->stopPolling();
+        m_delayLine2->disconnect();
+        updateStatusIndicator(ui->labelDelay2Status, DeviceStatus::Disconnected);
+    }
+    updateStatusBar("延时线已断开");
 }
 
 // ========== OHLD 四泵连接/断开槽函数 ==========
@@ -958,9 +943,26 @@ void Integration::connectOhldPump(int pumpIndex)
             "种子源泵", "pump路预放泵", "pump路主级泵", "Stokes路泵"
         };
         if (ok) {
+            // 科乃特实测流程：连接成功后 D1读取基本信息 → C1打开光源 → 启动D3实时电流轮询
+            SerialPortBase *pumpPort = m_ohldPumps[pumpIndex];
+            m_kntRealtimeMeaning[pumpIndex].clear();
+            m_kntBusy[pumpIndex] = false;
+
+            const QByteArray basicResp = readKntFrameNonFatal(pumpPort, kntBuildFrame(KNT_CMD_READ_BASIC_INFO));
+            qDebug() << QString::fromUtf8(names[pumpIndex]) << "D1基本信息响应:" << basicResp.toHex(' ');
+
+            const QByteArray openLightFrame = kntBuildLightSwitchFrame(true);
+            const QByteArray openResp = readKntFrameNonFatal(pumpPort, openLightFrame);
+            qDebug() << QString::fromUtf8(names[pumpIndex]) << "C1打开光源响应:" << openResp.toHex(' ');
+
             updateStatusIndicator(statusLabel, DeviceStatus::Connected);
-            updateStatusBar(QString::fromUtf8(names[pumpIndex]) + "连接成功");
-            qDebug() << QString::fromUtf8(names[pumpIndex]) << "连接成功:" << portName;
+            updateStatusBar(QString::fromUtf8(names[pumpIndex]) + "连接成功，光源已打开");
+            qDebug() << QString::fromUtf8(names[pumpIndex]) << "连接成功并已打开光源:" << portName;
+
+            // 启动实时电流轮询：连接后持续发送D3查询并刷新 lineEditPumpXDrive
+            if (m_kntPollTimer[pumpIndex]) {
+                m_kntPollTimer[pumpIndex]->start();
+            }
         } else {
             updateStatusIndicator(statusLabel, DeviceStatus::Error);
             updateStatusBar(QString::fromUtf8(names[pumpIndex]) + "连接失败");
@@ -980,10 +982,19 @@ void Integration::disconnectOhldPump(int pumpIndex)
 
     QLabel *statusLabel = ohldPumpStatusLabel(pumpIndex);
 
+    // 先停止实时电流轮询，避免断开过程中定时器仍访问串口
+    if (m_kntPollTimer[pumpIndex]) {
+        m_kntPollTimer[pumpIndex]->stop();
+    }
+    m_kntBusy[pumpIndex] = false;
+
     if (m_ohldPumps[pumpIndex] && m_ohldPumps[pumpIndex]->isOpen()) {
-        // 先发送关闭指令
-        m_ohldPumps[pumpIndex]->writeData(ohldBuildFrame(OHLD_CMD_CLOSE));
-        QThread::msleep(100);
+        // 科乃特实测流程：断开前先设置功率为0，再关闭光源，避免设备保持输出。
+        m_ohldPumps[pumpIndex]->writeData(kntBuildSetPowerFrame(0.0f));
+        QThread::msleep(80);
+        m_ohldPumps[pumpIndex]->clearReadBuffer();
+        m_ohldPumps[pumpIndex]->writeData(kntBuildLightSwitchFrame(false));
+        QThread::msleep(80);
         m_ohldPumps[pumpIndex]->closePort();
     }
     if (statusLabel) {
@@ -1456,46 +1467,70 @@ void Integration::saveSpectrum()
     }
 }
 
-// ========== 位移台控制槽函数 ==========
+// ========== 位移台控制槽函数（双轴独立控制） ==========
 
-void Integration::on_btnStageMoveAbsolute_clicked()
+// 轴公共处理：读取指定速度/位移输入框 → 设该轴速度 → 该轴绝对移动。axis: 0=轴1, 1=轴2。
+void Integration::moveStageAxisFromUi(unsigned short axis, QLineEdit *speedEdit, QLineEdit *displaceEdit)
 {
-    // 读取速度
     bool ok;
-    qint32 speed = ui->lineEditStageSpeed->text().toInt(&ok);
-    if (!ok || speed <= 0) {
-        QMessageBox::warning(this, "错误", "请输入有效的运动速度（正整数，pulse/s）");
+    double speedUmPerSec = speedEdit->text().toDouble(&ok);
+    if (!ok || speedUmPerSec <= 0) {
+        QMessageBox::warning(this, "错误", QString("轴%1：请输入有效的运动速度（正数，μm/s）").arg(axis + 1));
         return;
     }
 
-    // 读取位移量
-    double displace = ui->lineEditStageDisplace->text().toDouble(&ok);
+    double displaceUm = displaceEdit->text().toDouble(&ok);
     if (!ok) {
-        QMessageBox::warning(this, "错误", "请输入有效的位移量（mm）");
+        QMessageBox::warning(this, "错误", QString("轴%1：请输入有效的位移量（μm）").arg(axis + 1));
         return;
     }
 
     if (!m_stageController->isConnected()) {
-        QMessageBox::warning(this, "错误", "位移台未连接");
+        QMessageBox::warning(this, "错误", "运动控制卡未连接");
         return;
     }
 
-    // 标准流程：读取双台参数 → 设置速度 → 双台同步绝对位移
-    m_stageController->readDeviceInfoDual();
-    QThread::msleep(200);  // 等待 IN 响应
-
-    if (!m_stageController->setMaxSpeedDual(speed)) {
+    // 先设该轴独立速度，再下发该轴绝对位移（异步，不等待到位，实时位置标签持续刷新）
+    if (!m_stageController->setAxisSpeedUmPerSec(axis, speedUmPerSec)) {
         QMessageBox::warning(this, "错误", "设置速度失败：" + m_stageController->getLastError());
         return;
     }
-    QThread::msleep(100);
 
-    if (m_stageController->moveAbsoluteDual(displace)) {
-        updateStatusBar(QString("双台绝对位移: %1 mm，速度: %2 pulse/s").arg(displace).arg(speed));
-        qDebug() << "双台绝对位移成功:" << displace << "mm";
+    bool moveOk = (axis == 0) ? m_stageController->moveAbsolute1(displaceUm)
+                              : m_stageController->moveAbsolute2(displaceUm);
+    if (moveOk) {
+        updateStatusBar(QString("轴%1 绝对移动: %2 μm，速度: %3 μm/s")
+                        .arg(axis + 1).arg(displaceUm, 0, 'f', 3).arg(speedUmPerSec, 0, 'f', 3));
     } else {
-        QMessageBox::warning(this, "错误", "双台绝对位移失败：" + m_stageController->getLastError());
+        QMessageBox::warning(this, "错误",
+            QString("轴%1 绝对移动失败：").arg(axis + 1) + m_stageController->getLastError());
     }
+}
+
+void Integration::on_btnStageMoveAbsolute_clicked()
+{
+    // 轴1 绝对移动
+    moveStageAxisFromUi(0, ui->lineEditStageSpeed, ui->lineEditStageDisplace);
+}
+
+void Integration::on_btnStageMoveAbsolute2_clicked()
+{
+    // 轴2 绝对移动
+    moveStageAxisFromUi(1, ui->lineEditStageSpeed2, ui->lineEditStageDisplace2);
+}
+
+void Integration::on_btnStageStop1_clicked()
+{
+    // 轴1 停止
+    if (!m_stageController->isConnected()) return;
+    if (m_stageController->stopAxis(0)) updateStatusBar("轴1 已停止");
+}
+
+void Integration::on_btnStageStop2_clicked()
+{
+    // 轴2 停止
+    if (!m_stageController->isConnected()) return;
+    if (m_stageController->stopAxis(1)) updateStatusBar("轴2 已停止");
 }
 
 void Integration::on_btnConfirmStageAngle_clicked()
@@ -1518,34 +1553,89 @@ void Integration::on_btnConfirmStageTimeDelay_clicked()
 
 void Integration::on_btnConfirmStageDelayLine1_clicked()
 {
+    // 确定按钮：仅下发设置延迟（功能码0x04）+ 查询位置，不再自动归零。
+    // 归零为独立按钮，命令解耦，避免设置时强制回零。
     bool ok;
     float delayPS = ui->lineEditStageDelayLine1->text().toFloat(&ok);
     if (!ok || delayPS < 0) {
         QMessageBox::warning(this, "错误", "请输入有效的延迟值（PS）");
         return;
     }
-    setDelayLineValue(m_delayLine, delayPS, "延迟线1");
+    setDelayLineOnly(m_delayLine, delayPS, "延迟线1");
 }
 
 void Integration::on_btnConfirmStageDelayLine2_clicked()
 {
+    // 确定按钮：仅下发设置延迟 + 查询位置（命令独立，不自动归零）
     bool ok;
     float delayPS = ui->lineEditStageDelayLine2->text().toFloat(&ok);
     if (!ok || delayPS < 0) {
         QMessageBox::warning(this, "错误", "请输入有效的延迟值（PS）");
         return;
     }
-    setDelayLineValue(m_delayLine2, delayPS, "延迟线2");
+    setDelayLineOnly(m_delayLine2, delayPS, "延迟线2");
+}
+
+void Integration::on_btnStageDelayLine1Home_clicked()
+{
+    // 归零按钮：独立下发归零命令（功能码 0x07）
+    if (!m_delayLine || !m_delayLine->isConnected()) {
+        QMessageBox::warning(this, "错误", "延迟线1 未连接");
+        return;
+    }
+    if (m_delayLine->home()) {
+        updateStatusBar("延迟线1 已归零");
+    } else {
+        QMessageBox::warning(this, "错误", "延迟线1 归零失败：" + m_delayLine->getLastError());
+    }
+}
+
+void Integration::on_btnStageDelayLine2Home_clicked()
+{
+    // 归零按钮：独立下发归零命令（功能码 0x07）
+    if (!m_delayLine2 || !m_delayLine2->isConnected()) {
+        QMessageBox::warning(this, "错误", "延迟线2 未连接");
+        return;
+    }
+    if (m_delayLine2->home()) {
+        updateStatusBar("延迟线2 已归零");
+    } else {
+        QMessageBox::warning(this, "错误", "延迟线2 归零失败：" + m_delayLine2->getLastError());
+    }
+}
+
+void Integration::onDelayLine1PositionUpdated(quint8 id, float delayPS)
+{
+    // 位移台页延迟线1实时位置刷新：格式 "● 运动中 +200.000 PS" / "○ 停止 +0.000 PS"
+    Q_UNUSED(id);
+    const QString moving = m_delayLine && m_delayLine->isMoving() ? "● 运动中" : "○ 停止";
+    ui->labelStageDelayLine1Pos->setText(QString("%1 %2 PS")
+                                         .arg(moving)
+                                         .arg(delayPS, 0, 'f', 3));
+}
+
+void Integration::onDelayLine2PositionUpdated(quint8 id, float delayPS)
+{
+    // 位移台页延迟线2实时位置刷新
+    Q_UNUSED(id);
+    const QString moving = m_delayLine2 && m_delayLine2->isMoving() ? "● 运动中" : "○ 停止";
+    ui->labelStageDelayLine2Pos->setText(QString("%1 %2 PS")
+                                         .arg(moving)
+                                         .arg(delayPS, 0, 'f', 3));
 }
 
 void Integration::onStage1PositionChanged(qint32 positionPulses)
 {
-    qDebug() << "位移台1 位置改变:" << positionPulses;
+    // 轴1 实时位置：pulse → μm，带正负号两位小数显示
+    double um = MtAxisConfig::pulsesToUm(positionPulses);
+    ui->labelStagePos1Value->setText(QString("%1").arg(um, 0, 'f', 2));
 }
 
 void Integration::onStage2PositionChanged(qint32 positionPulses)
 {
-    qDebug() << "位移台2 位置改变:" << positionPulses;
+    // 轴2 实时位置：pulse → μm，带正负号两位小数显示
+    double um = MtAxisConfig::pulsesToUm(positionPulses);
+    ui->labelStagePos2Value->setText(QString("%1").arg(um, 0, 'f', 2));
 }
 
 void Integration::onStageMoveCompletedDual()
@@ -1571,96 +1661,8 @@ void Integration::onDelay2Changed(float delayPS)
     qDebug() << "延时线2延迟改变:" << delayPS << "PS";
 }
 
-// ========== 振镜打标控制槽函数（按 TCP/UDP 协议直连） ==========
+// ========== 振镜角度控制槽函数（角度 → 坐标 → scannerJump） ==========
 
-// 帮助函数：从 UI 收集激光/振镜参数并下发到 GalvoMirror
-static void collectGalvoParam(GalvoMirror *gm, Ui::Integration *ui)
-{
-    GalvoLaserPara laser;
-    std::memset(&laser, 0, sizeof(laser));
-    laser.nLaserOnDelay   = 110;
-    laser.nLaserOffDelay  = 120;
-    laser.nFPSDelay       = 10;
-    laser.nFPSLength      = 20;
-    laser.nQDelay         = 5;
-    laser.DutyCycle        = ui->lineEditGalvoDutyCycle->text().toFloat();
-    laser.Frequency        = ui->lineEditGalvoFrequency->text().toFloat();
-    laser.StandbyDutyCycle = 0.2f;
-    laser.StandbyFrequency = 10.0f;
-    laser.nLaserPower      = ui->lineEditGalvoLaserPower->text().toFloat();
-    gm->setLaserPara(laser);
-
-    GalvoMarkSetting mark;
-    std::memset(&mark, 0, sizeof(mark));
-    mark.nMarkV          = ui->lineEditGalvoMarkV->text().toInt();
-    mark.nMark2MarkDelay = 0;
-    mark.nJumpDelay      = 0;
-    mark.nMarkDelay      = 0;
-    mark.nJumpV          = ui->lineEditGalvoJumpV->text().toInt();
-    mark.ScanTimes       = ui->lineEditGalvoScanTimes->text().toInt();
-    if (mark.ScanTimes < 1) mark.ScanTimes = 1;
-    gm->setMarkSetting(mark);
-
-    GalvoShapeInfo shape;
-    std::memset(&shape, 0, sizeof(shape));
-    if (ui->rbGalvoShapeLine->isChecked())
-        shape.Shape = static_cast<float>(GALVO_SHAPE_LINE);
-    else if (ui->rbGalvoShapeCircle->isChecked())
-        shape.Shape = static_cast<float>(GALVO_SHAPE_CIRCLE);
-    else if (ui->rbGalvoShapeArray->isChecked())
-        shape.Shape = static_cast<float>(GALVO_SHAPE_ARRAY);
-    else
-        shape.Shape = static_cast<float>(GALVO_SHAPE_POINT);
-
-    shape.PointX            = ui->lineEditGalvoPointX->text().toFloat();
-    shape.PointY            = ui->lineEditGalvoPointY->text().toFloat();
-    shape.Point_LaseronTime = ui->lineEditGalvoPointTime->text().toFloat();
-    shape.Line_StartX       = ui->lineEditGalvoLineStartX->text().toFloat();
-    shape.Line_StartY       = ui->lineEditGalvoLineStartY->text().toFloat();
-    shape.Line_EndX         = ui->lineEditGalvoLineEndX->text().toFloat();
-    shape.Line_EndY         = ui->lineEditGalvoLineEndY->text().toFloat();
-    shape.CircleX           = ui->lineEditGalvoCircleX->text().toFloat();
-    shape.CircleY           = ui->lineEditGalvoCircleY->text().toFloat();
-    shape.Circle_Radius     = ui->lineEditGalvoCircleR->text().toFloat();
-    gm->setShape(shape);
-
-    GalvoIOControl io;
-    std::memset(&io, 0, sizeof(io));
-    io.nRedLightEnable  = 0;
-    io.nReadyDownEanble = 1;
-    io.nLightLevel      = 0;
-    gm->setIOControl(io);
-}
-
-void Integration::on_rbGalvoShapePoint_toggled(bool checked)
-{
-    if (checked) qDebug() << "振镜图形切换：点";
-}
-void Integration::on_rbGalvoShapeLine_toggled(bool checked)
-{
-    if (checked) qDebug() << "振镜图形切换：线";
-}
-void Integration::on_rbGalvoShapeCircle_toggled(bool checked)
-{
-    if (checked) qDebug() << "振镜图形切换：圆";
-}
-void Integration::on_rbGalvoShapeArray_toggled(bool checked)
-{
-    if (checked) qDebug() << "振镜图形切换：多点阵列";
-}
-
-void Integration::on_btnGalvoSetParam_clicked()
-{
-    if (!m_galvoMirror->isConnected()) {
-        QMessageBox::warning(this, "错误", "振镜控制卡未连接！\n请先连接振镜控制卡。");
-        return;
-    }
-    collectGalvoParam(m_galvoMirror, ui);
-    if (m_galvoMirror->sendShapeFrame())
-        updateStatusBar("已下发振镜图形参数");
-    else
-        updateStatusBar("振镜图形参数下发失败");
-}
 
 void Integration::on_btnGalvoStart_clicked()
 {
@@ -1668,39 +1670,30 @@ void Integration::on_btnGalvoStart_clicked()
         QMessageBox::warning(this, "错误", "振镜控制卡未连接！\n请先连接振镜控制卡。");
         return;
     }
-    collectGalvoParam(m_galvoMirror, ui);
-    if (m_galvoMirror->startMark())
-        updateStatusBar("振镜：开始打标");
-    else
-        updateStatusBar("振镜：开始打标失败");
+
+    bool ok = false;
+    float angleDeg = ui->lineEditGalvoPointX->text().toFloat(&ok);
+    if (!ok) {
+        QMessageBox::warning(this, "错误", "请输入有效的振镜目标角度（deg）");
+        return;
+    }
+
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    galvoAngleToCoord(angleDeg, x, y, z);
+
+    if (m_galvoMirror->scannerJump(x, y, z)) {
+        updateStatusBar(QString("振镜已跳转到角度: %1 deg").arg(angleDeg, 0, 'f', 3));
+    } else {
+        updateStatusBar(QString("振镜跳转失败: %1 deg").arg(angleDeg, 0, 'f', 3));
+    }
 }
 
 void Integration::on_btnGalvoStop_clicked()
 {
     if (m_galvoMirror->stopMark())
         updateStatusBar("振镜：已停止");
-}
-
-void Integration::on_btnGalvoPause_clicked()
-{
-    if (m_galvoMirror->pauseMark())
-        updateStatusBar("振镜：已暂停");
-}
-
-void Integration::on_btnGalvoContinue_clicked()
-{
-    if (m_galvoMirror->continueMark())
-        updateStatusBar("振镜：已继续");
-}
-
-void Integration::on_btnGalvoClearLog_clicked()
-{
-    ui->textEditGalvoLog->clear();
-}
-
-void Integration::onGalvoMessageLog(const QString &msg)
-{
-    ui->textEditGalvoLog->append(msg);
 }
 
 void Integration::onGalvoHeartbeatChanged(bool online)
@@ -1712,36 +1705,57 @@ void Integration::onGalvoHeartbeatChanged(bool online)
 
 // ========== 泵功率设置槽函数 - 位移台页（OHLD 四泵）==========
 
+// 位移台页四泵输出功率上限保护（mW）：
+//   pumpIndex 0=种子源泵=70；1=pump路预放泵(小泵)=300；2=pump路主级泵(大泵)=5000；3=Stokes路泵(小泵)=300
+// 入参：泵索引、输入框、可下发功率(输出)；返回 false 表示输入非法应中止。
+static bool clampStagePumpPower(int pumpIndex, QLineEdit *edit, QWidget *parent, float &powerMW)
+{
+    static const float kPumpMaxMW[4] = { 70.0f, 300.0f, 5000.0f, 300.0f };
+
+    bool ok = false;
+    powerMW = edit->text().toFloat(&ok);
+    if (!ok || powerMW < 0.0f) {
+        QMessageBox::warning(parent, "错误", "请输入有效的输出功率值（mW，非负数）");
+        return false;
+    }
+
+    const float maxMW = kPumpMaxMW[pumpIndex];
+    if (powerMW > maxMW) {
+        // 超过上限：提示并将输入框与下发值都改写为最大值
+        powerMW = maxMW;
+        edit->setText(QString::number(maxMW, 'f', 0));
+        QMessageBox::warning(parent, "超出范围",
+            QString("输入功率超过该泵最大值，已自动设置为最大值 %1 mW").arg(maxMW, 0, 'f', 0));
+    }
+    return true;
+}
+
 void Integration::on_btnConfirmStagePump1_clicked()
 {
-    bool ok;
-    float cur = ui->lineEditStagePump1->text().toFloat(&ok);
-    if (!ok) { QMessageBox::warning(this, "错误", "请输入有效的电流值"); return; }
-    setOhldPumpCurrent(0, cur);
+    float powerMW = 0.0f;
+    if (!clampStagePumpPower(0, ui->lineEditStagePump1, this, powerMW)) return;
+    setOhldPumpCurrent(0, powerMW);
 }
 
 void Integration::on_btnConfirmStagePump2_clicked()
 {
-    bool ok;
-    float cur = ui->lineEditStagePump2->text().toFloat(&ok);
-    if (!ok) { QMessageBox::warning(this, "错误", "请输入有效的电流值"); return; }
-    setOhldPumpCurrent(1, cur);
+    float powerMW = 0.0f;
+    if (!clampStagePumpPower(1, ui->lineEditStagePump2, this, powerMW)) return;
+    setOhldPumpCurrent(1, powerMW);
 }
 
 void Integration::on_btnConfirmStagePump3_clicked()
 {
-    bool ok;
-    float cur = ui->lineEditStagePump3->text().toFloat(&ok);
-    if (!ok) { QMessageBox::warning(this, "错误", "请输入有效的电流值"); return; }
-    setOhldPumpCurrent(2, cur);
+    float powerMW = 0.0f;
+    if (!clampStagePumpPower(2, ui->lineEditStagePump3, this, powerMW)) return;
+    setOhldPumpCurrent(2, powerMW);
 }
 
 void Integration::on_btnConfirmStagePump4_clicked()
 {
-    bool ok;
-    float cur = ui->lineEditStagePump4->text().toFloat(&ok);
-    if (!ok) { QMessageBox::warning(this, "错误", "请输入有效的电流值"); return; }
-    setOhldPumpCurrent(3, cur);
+    float powerMW = 0.0f;
+    if (!clampStagePumpPower(3, ui->lineEditStagePump4, this, powerMW)) return;
+    setOhldPumpCurrent(3, powerMW);
 }
 
 // ========== 泵功率设置槽函数 - 振镜页（OHLD 四泵，与位移台页统一） ==========
@@ -1762,13 +1776,8 @@ void Integration::on_btnConfirmGalvoPump2_clicked()
     setOhldPumpCurrent(1, cur);
 }
 
-void Integration::on_btnConfirmGalvoPump3_clicked()
-{
-    bool ok;
-    float cur = ui->lineEditGalvoPump3->text().toFloat(&ok);
-    if (!ok) { QMessageBox::warning(this, "错误", "请输入有效的电流值"); return; }
-    setOhldPumpCurrent(2, cur);
-}
+// 注：振镜页不再控制 pump路主级泵（OHLD pumpIndex=2），原 on_btnConfirmGalvoPump3_clicked 已删除
+//      该泵仍在位移台页通过 on_btnConfirmStagePump3_clicked 控制
 
 void Integration::on_btnConfirmGalvoPump4_clicked()
 {
@@ -1778,9 +1787,9 @@ void Integration::on_btnConfirmGalvoPump4_clicked()
     setOhldPumpCurrent(3, cur);
 }
 
-void Integration::setOhldPumpCurrent(int pumpIndex, float currentMA)
+void Integration::setOhldPumpCurrent(int pumpIndex, float powerMW)
 {
-    // pumpIndex: 0=种子源泵, 1=pump路预放泵, 2=pump路主级泵, 3=Stokes路泵
+    // 科乃特协议：输入为输出功率(mW)，确认按钮只下发 C3 设置功率；驱动电流显示由实时轮询负责刷新。
     if (pumpIndex < 0 || pumpIndex >= 4) return;
 
     SerialPortBase *port = m_ohldPumps[pumpIndex];
@@ -1795,113 +1804,82 @@ void Integration::setOhldPumpCurrent(int pumpIndex, float currentMA)
     };
     const QString &name = pumpNames[pumpIndex];
 
-    // 1. 开启激光器（0x05）
-    QByteArray openFrame = ohldBuildFrame(OHLD_CMD_OPEN);
-    if (port->writeData(openFrame) != openFrame.size()) {
-        QMessageBox::warning(this, "错误", name + " 开启指令发送失败");
+    if (powerMW < 0.0f) {
+        QMessageBox::warning(this, "错误", name + " 输出功率不能为负数");
         return;
     }
-    QThread::msleep(100);
 
-    // 2. 设置驱动电流（0x02，电流×10，4字节大端）
-    QByteArray setFrame = ohldBuildSetCurrentFrame(currentMA);
-    if (port->writeData(setFrame) != setFrame.size()) {
-        QMessageBox::warning(this, "错误", name + " 设置电流指令发送失败");
-        return;
+    // 占用串口：避免与实时电流轮询(D3)并发导致串包
+    m_kntBusy[pumpIndex] = true;
+
+    // 设置输出功率：0xC3，功率值 = mW × 实测功率系数100，小端2字节；读掉C3应答避免串包
+    const QByteArray setFrame = kntBuildSetPowerFrame(powerMW);
+    const QByteArray setResp = readKntFrameNonFatal(port, setFrame);
+    qDebug() << name << "C3设置功率响应:" << setResp.toHex(' ');
+
+    m_kntBusy[pumpIndex] = false;
+
+    updateStatusBar(QString("%1 输出功率设置成功: %2 mW").arg(name).arg(powerMW, 0, 'f', 1));
+}
+
+void Integration::pollOhldPumpCurrent(int pumpIndex)
+{
+    // 实时电流轮询：连接后由定时器持续触发，发送 D3 读取实时信息并刷新驱动电流显示。
+    if (pumpIndex < 0 || pumpIndex >= 4) return;
+    if (m_kntBusy[pumpIndex]) return;  // 设置功率期间跳过本次轮询，避免串包
+
+    SerialPortBase *port = m_ohldPumps[pumpIndex];
+    if (!port || !port->isOpen()) return;
+
+    m_kntBusy[pumpIndex] = true;
+    const QByteArray resp = readKntFrameNonFatal(port, kntBuildFrame(KNT_CMD_READ_REALTIME_INFO));
+    m_kntBusy[pumpIndex] = false;
+
+    KntRealtimeStatus status;
+    if (!kntParseRealtimeResponse(resp, m_kntRealtimeMeaning[pumpIndex], status)) {
+        return;  // 单次解析失败不打扰用户，等待下一次轮询
     }
-    QThread::msleep(100);
 
-    // 3. 查询状态（0x01），等待响应后解析并刷新显示框
-    QByteArray queryFrame = ohldBuildFrame(OHLD_CMD_QUERY);
-    if (port->writeData(queryFrame) != queryFrame.size()) {
-        QMessageBox::warning(this, "错误", name + " 查询指令发送失败");
-        return;
-    }
-    QThread::msleep(200);
+    updatePumpDriveCurrentDisplay(pumpIndex, status.driveCurrent);
 
-    // 读取响应（已等待 200ms，直接读取所有可用数据）
-    QByteArray resp = port->readAll();
-    OhldPumpStatus status;
-    if (ohldParseQueryResponse(resp, status)) {
-        m_ohldStatus[pumpIndex] = status;
-
-        // 刷新对应泵的显示框
-        QLineEdit *tempEdit   = nullptr;
-        QLineEdit *driveEdit  = nullptr;
-        QLineEdit *maxEdit    = nullptr;
-        QLineEdit *backEdit   = nullptr;
-
-        switch (pumpIndex) {
-            case 0:
-                tempEdit  = ui->lineEditPump1Temp;
-                driveEdit = ui->lineEditPump1Drive;
-                maxEdit   = ui->lineEditPump1Max;
-                backEdit  = ui->lineEditPump1Back;
-                break;
-            case 1:
-                tempEdit  = ui->lineEditPump2Temp;
-                driveEdit = ui->lineEditPump2Drive;
-                maxEdit   = ui->lineEditPump2Max;
-                backEdit  = ui->lineEditPump2Back;
-                break;
-            case 2:
-                tempEdit  = ui->lineEditPump3Temp;
-                driveEdit = ui->lineEditPump3Drive;
-                maxEdit   = ui->lineEditPump3Max;
-                backEdit  = ui->lineEditPump3Back;
-                break;
-            case 3:
-                tempEdit  = ui->lineEditPump4Temp;
-                driveEdit = ui->lineEditPump4Drive;
-                maxEdit   = ui->lineEditPump4Max;
-                backEdit  = ui->lineEditPump4Back;
-                break;
-        }
-
-        if (tempEdit)  tempEdit->setText(QString::number(status.temperature,  'f', 1) + " ℃");
-        if (driveEdit) driveEdit->setText(QString::number(status.driveCurrent, 'f', 1) + " mA");
-        if (maxEdit)   maxEdit->setText(QString::number(status.maxCurrent,    'f', 1) + " mA");
-        if (backEdit)  backEdit->setText(QString::number(status.backCurrent,  'f', 1) + " mA");
-
-        updateStatusBar(QString("%1 电流设置成功: %2 mA，温度: %3 ℃")
-                        .arg(name).arg(currentMA, 0, 'f', 1).arg(status.temperature, 0, 'f', 1));
-
-        // 温度异常保护（>60℃ 自动关闭）
-        if (status.temperature > 60.0f) {
-            QByteArray closeFrame = ohldBuildFrame(OHLD_CMD_CLOSE);
-            port->writeData(closeFrame);
-            QMessageBox::warning(this, "温度异常",
-                name + QString(" 温度过高（%1℃），已自动关闭！").arg(status.temperature, 0, 'f', 1));
-        }
-    } else {
-        updateStatusBar(name + " 查询响应解析失败，请检查连接");
-        qDebug() << name << "OHLD 查询响应解析失败，原始数据:" << resp.toHex(' ');
+    // 安全保护：泵浦/模块温度异常时关闭光源并停止轮询
+    const float maxTemperature = qMax(status.pumpTemperature, status.moduleTemperature);
+    if (maxTemperature > 60.0f) {
+        if (m_kntPollTimer[pumpIndex]) m_kntPollTimer[pumpIndex]->stop();
+        port->writeData(kntBuildLightSwitchFrame(false));
+        QMessageBox::warning(this, "温度异常",
+            QString("泵%1 温度过高（%2℃），已关闭光源！").arg(pumpIndex + 1).arg(maxTemperature, 0, 'f', 1));
     }
 }
 
-bool Integration::setOhldPumpCurrentSilent(int pumpIndex, float currentMA)
+void Integration::updatePumpDriveCurrentDisplay(int pumpIndex, float driveCurrentMA)
 {
-    // 静默版：仅顺序下发 开启(0x05) → 设置电流(0x02)，不弹窗、不查询、不刷新显示。
-    // 用于功率/位移台/延迟预设执行链路。返回 true 表示两条命令均完整写入串口。
+    // 刷新对应泵的驱动电流只读显示框
+    QLineEdit *driveEdit = nullptr;
+    switch (pumpIndex) {
+        case 0: driveEdit = ui->lineEditPump1Drive; break;
+        case 1: driveEdit = ui->lineEditPump2Drive; break;
+        case 2: driveEdit = ui->lineEditPump3Drive; break;
+        case 3: driveEdit = ui->lineEditPump4Drive; break;
+    }
+    if (driveEdit) {
+        driveEdit->setText(QString::number(driveCurrentMA, 'f', 2) + " mA");
+    }
+}
+
+bool Integration::setOhldPumpCurrentSilent(int pumpIndex, float powerMW)
+{
+    // 科乃特静默版：预设执行链路只下发 C3 设置输出功率；光源已在连接成功后打开。
     if (pumpIndex < 0 || pumpIndex >= 4) return false;
+    if (powerMW < 0.0f) return false;
+
     SerialPortBase *port = m_ohldPumps[pumpIndex];
     if (!port || !port->isOpen()) {
         return false;
     }
 
-    QByteArray openFrame = ohldBuildFrame(OHLD_CMD_OPEN);
-    if (port->writeData(openFrame) != openFrame.size()) {
-        return false;
-    }
-    QThread::msleep(50);
-
-    QByteArray setFrame = ohldBuildSetCurrentFrame(currentMA);
-    if (port->writeData(setFrame) != setFrame.size()) {
-        return false;
-    }
-    QThread::msleep(50);
-
-    return true;
+    const QByteArray setFrame = kntBuildSetPowerFrame(powerMW);
+    return port->writeData(setFrame) == setFrame.size();
 }
 
 
@@ -1934,12 +1912,21 @@ void Integration::setDelayLineValue(DelayLine *device, float delayPS, const QStr
         return;
     }
 
+    // 发送控制命令前暂停位置轮询，避免查询帧(0x0E)与归零(0x07)/设置(0x04)帧
+    // 在串口上交错穿插导致仪器漏读；发完恢复轮询继续刷新位置标签。
+    const bool wasPolling = device->isPolling();
+    if (wasPolling) device->stopPolling();
+
     // 1. 归零（功能码 0x07）
     if (!device->home()) {
         QMessageBox::warning(this, "错误", label + " 归零失败：" + device->getLastError());
+        if (wasPolling) device->startPolling(100);
         return;
     }
     qDebug() << label << "归零成功";
+
+    // 归零会触发电机物理回零，需留出较长处理间隔，再发后续命令
+    QThread::msleep(150);
 
     // 2. 设置延迟（功能码 0x04，PS×1000→3字节大端）
     if (device->setDelay(delayPS)) {
@@ -1947,11 +1934,54 @@ void Integration::setDelayLineValue(DelayLine *device, float delayPS, const QStr
         qDebug() << label << "延迟设置成功:" << delayPS << "PS";
     } else {
         QMessageBox::warning(this, "错误", label + " 延迟设置失败：" + device->getLastError());
+        if (wasPolling) device->startPolling(100);
         return;
     }
 
+    // 留出设置命令处理间隔，再发查询
+    QThread::msleep(80);
+
     // 3. 查询当前位置（功能码 0x0E）
     device->queryPosition();
+
+    if (wasPolling) device->startPolling(100);  // 恢复轮询，实时刷新只读位置标签
+}
+
+void Integration::setDelayLineOnly(DelayLine *device, float delayPS, const QString &label)
+{
+    // 仅设置延迟方法：只下发 设置延迟(0x04) + 查询位置(0x0E)，不做归零。
+    // 用于「确定」按钮，使设置与归零命令独立。
+    // 入参：device 目标延迟线实例；delayPS 目标延迟值(PS)；label 提示用名称。
+    if (!device) return;
+
+    if (!device->isConnected()) {
+        QMessageBox::warning(this, "错误", label + " 未连接");
+        return;
+    }
+
+    // 发送控制命令前暂停位置轮询：100ms 轮询会持续发查询帧(0x0E)，
+    // 若与设置帧(0x04)在串口上交错穿插，仪器会读串/丢弃命令。
+    // 发完恢复轮询，只读位置标签即可继续实时刷新。
+    const bool wasPolling = device->isPolling();
+    if (wasPolling) device->stopPolling();
+
+    // 设置延迟（功能码 0x04，PS×1000→3字节大端）
+    if (device->setDelay(delayPS)) {
+        updateStatusBar(label + " 延迟设置成功: " + QString::number(delayPS) + " PS");
+        qDebug() << label << "延迟设置成功:" << delayPS << "PS";
+    } else {
+        QMessageBox::warning(this, "错误", label + " 延迟设置失败：" + device->getLastError());
+        if (wasPolling) device->startPolling(100);  // 失败也要恢复轮询
+        return;
+    }
+
+    // 留出设置命令的处理间隔，再发查询，避免两帧粘连导致仪器漏读
+    QThread::msleep(80);
+
+    // 查询当前位置（功能码 0x0E）
+    device->queryPosition();
+
+    if (wasPolling) device->startPolling(100);  // 恢复轮询，实时刷新只读位置标签
 }
 
 // ========== 设备状态更新槽函数 ==========
@@ -1964,10 +1994,9 @@ void Integration::onSpectrometerFOPOStatusChanged(DeviceStatus status)
 
 void Integration::onStageStatusChanged(DeviceStatus status)
 {
-    // 双串口聚合：把整体状态同步到两个指示灯
+    // USB 单卡双轴：整体状态同步到唯一的位移台状态指示灯
     updateStatusIndicator(ui->labelStage1Status, status);
-    updateStatusIndicator(ui->labelStage2Status, status);
-    qDebug() << "双位移台整体状态改变:" << static_cast<int>(status);
+    qDebug() << "位移台整体状态改变:" << static_cast<int>(status);
 }
 
 void Integration::onGalvoStatusChanged(DeviceStatus status)
@@ -2593,24 +2622,14 @@ SerialConfig Integration::getDelayLineSerialConfig2()
 
 SerialConfig Integration::getStageSerialConfig1()
 {
-    SerialConfig config;
-    config.portName = ui->comboBoxStage1Port->currentText();
-    config.baudRate = ui->comboBoxStage1BaudRate->currentData().toInt();
-    config.dataBits = QSerialPort::Data8;
-    config.stopBits = QSerialPort::OneStop;
-    config.parity = QSerialPort::NoParity;
-    return config;
+    // 兼容保留：USB 位移台不再使用串口配置，返回空配置避免外部调用崩溃。
+    return SerialConfig();
 }
 
 SerialConfig Integration::getStageSerialConfig2()
 {
-    SerialConfig config;
-    config.portName = ui->comboBoxStage2Port->currentText();
-    config.baudRate = ui->comboBoxStage2BaudRate->currentData().toInt();
-    config.dataBits = QSerialPort::Data8;
-    config.stopBits = QSerialPort::OneStop;
-    config.parity = QSerialPort::NoParity;
-    return config;
+    // 兼容保留：USB 位移台不再使用串口配置，返回空配置避免外部调用崩溃。
+    return SerialConfig();
 }
 
 QString Integration::getGalvoIPAddress()
@@ -2648,11 +2667,12 @@ void Integration::loadSerialConfig(const QString &device, QString &port,
 
 void Integration::initPresetTables()
 {
-    // 初始化振镜页 - 光源功率预设表格
+    // 初始化振镜页 - 光源功率预设表格（OHLD 三泵：种子源 / FOPO预放 / Stokes）
+    // 注：振镜页不再控制 pump路主级泵，PowerPreset.mainPumpCurrent 字段保留为 0
     m_powerPresetTable = ui->tableWidgetPowerPresets;
-    m_powerPresetTable->setColumnCount(6);
+    m_powerPresetTable->setColumnCount(5);
     m_powerPresetTable->setHorizontalHeaderLabels({"振镜起始(deg)", "振镜结束(deg)",
-                                                    "种子源泵(mA)", "预放泵(mA)", "主级泵(mA)", "Stokes泵(mA)"});
+                                                    "种子源泵(mA)", "FOPO泵(mA)", "Stokes泵(mA)"});
     m_powerPresetTable->horizontalHeader()->setStretchLastSection(false);
     m_powerPresetTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_powerPresetTable->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -2662,11 +2682,11 @@ void Integration::initPresetTables()
     headerFont.setPointSize(9);
     m_powerPresetTable->horizontalHeader()->setFont(headerFont);
 
-    // 设置列宽
+    // 设置列宽（5列：起始/结束/seed/fopo/stokes）
     m_powerPresetTable->setColumnWidth(0, 90);
     m_powerPresetTable->setColumnWidth(1, 90);
     m_powerPresetTable->setColumnWidth(2, 90);
-    m_powerPresetTable->setColumnWidth(3, 70);
+    m_powerPresetTable->setColumnWidth(3, 90);
     m_powerPresetTable->setColumnWidth(4, 90);
 
     // 添加默认6行数据
@@ -2794,10 +2814,10 @@ void Integration::on_btnStartPowerExecution_clicked()
     }
 
     // 智能检查：分析预设中实际使用的设备
+    // 注：振镜页不再控制 pump路主级泵（OHLD pumpIndex=2），不再检查 needsMain
     bool needsGalvo = false;
     bool needsSeed = false;
     bool needsFOPO = false;
-    bool needsMain = false;
     bool needsStokes = false;
     bool needsDelay = false;
 
@@ -2811,9 +2831,6 @@ void Integration::on_btnStartPowerExecution_clicked()
         }
         if (preset.fopoPumpCurrent != 0) {
             needsFOPO = true;
-        }
-        if (preset.mainPumpCurrent != 0) {
-            needsMain = true;
         }
         if (preset.stokesPumpCurrent != 0) {
             needsStokes = true;
@@ -2840,9 +2857,6 @@ void Integration::on_btnStartPowerExecution_clicked()
     }
     if (needsFOPO && (!m_ohldPumps[1] || !m_ohldPumps[1]->isOpen())) {
         missingDevices << "pump路预放泵（OHLD-2）";
-    }
-    if (needsMain && (!m_ohldPumps[2] || !m_ohldPumps[2]->isOpen())) {
-        missingDevices << "pump路主级泵（OHLD-3）";
     }
     if (needsStokes && (!m_ohldPumps[3] || !m_ohldPumps[3]->isOpen())) {
         missingDevices << "Stokes泵（OHLD-4）";
@@ -2922,10 +2936,7 @@ void Integration::onPowerPresetDelayTimeout()
             disconnectedDevices << "pump路预放泵（OHLD-2）";
             hasDisconnectedDevice = true;
         }
-        if (preset.mainPumpCurrent != 0 && (!m_ohldPumps[2] || !m_ohldPumps[2]->isOpen())) {
-            disconnectedDevices << "pump路主级泵（OHLD-3）";
-            hasDisconnectedDevice = true;
-        }
+        // 注：振镜页不再控制 pump路主级泵（pumpIndex=2），不再检查其连接状态
         if (preset.stokesPumpCurrent != 0 && (!m_ohldPumps[3] || !m_ohldPumps[3]->isOpen())) {
             disconnectedDevices << "Stokes泵（OHLD-4）";
             hasDisconnectedDevice = true;
@@ -3002,14 +3013,9 @@ QList<PowerPreset> Integration::loadPowerPresetsFromTable()
             preset.fopoPumpCurrent = itemFOPO->text().toFloat();
         }
 
-        // 读取主级泵电流（第4列）
-        QTableWidgetItem *itemMain = m_powerPresetTable->item(row, 4);
-        if (itemMain) {
-            preset.mainPumpCurrent = itemMain->text().toFloat();
-        }
-
-        // 读取Stokes泵电流（第5列）
-        QTableWidgetItem *itemStokes = m_powerPresetTable->item(row, 5);
+        // 读取Stokes泵电流（第4列）
+        // 注：振镜页不再控制 pump路主级泵，preset.mainPumpCurrent 保持默认 0
+        QTableWidgetItem *itemStokes = m_powerPresetTable->item(row, 4);
         if (itemStokes) {
             preset.stokesPumpCurrent = itemStokes->text().toFloat();
         }
@@ -3052,55 +3058,43 @@ void Integration::executePowerPreset(int index)
         }
     }
 
-    // 2. 设置种子源泵功率（OHLD pumpIndex=0）
+    // 2. 设置种子源泵输出功率（科乃特 pumpIndex=0，单位mW）
     if (preset.seedPumpCurrent != 0) {
         if (m_ohldPumps[0] && m_ohldPumps[0]->isOpen()) {
             if (setOhldPumpCurrentSilent(0, preset.seedPumpCurrent)) {
-                successList << QString("种子源泵: %1 mA").arg(preset.seedPumpCurrent, 0, 'f', 1);
+                successList << QString("种子源泵: %1 mW").arg(preset.seedPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("种子源泵: %1 mA").arg(preset.seedPumpCurrent, 0, 'f', 1);
+                failedList << QString("种子源泵: %1 mW").arg(preset.seedPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("种子源泵: %1 mA（OHLD串口未连接）").arg(preset.seedPumpCurrent, 0, 'f', 1);
+            skippedList << QString("种子源泵: %1 mW（科乃特串口未连接）").arg(preset.seedPumpCurrent, 0, 'f', 1);
         }
     }
 
-    // 3. 设置FOPO/pump路预放泵功率（OHLD pumpIndex=1）
+    // 3. 设置FOPO/pump路预放泵输出功率（科乃特 pumpIndex=1，单位mW）
     if (preset.fopoPumpCurrent != 0) {
         if (m_ohldPumps[1] && m_ohldPumps[1]->isOpen()) {
             if (setOhldPumpCurrentSilent(1, preset.fopoPumpCurrent)) {
-                successList << QString("FOPO泵: %1 mA").arg(preset.fopoPumpCurrent, 0, 'f', 1);
+                successList << QString("FOPO泵: %1 mW").arg(preset.fopoPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("FOPO泵: %1 mA").arg(preset.fopoPumpCurrent, 0, 'f', 1);
+                failedList << QString("FOPO泵: %1 mW").arg(preset.fopoPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("FOPO泵: %1 mA（OHLD串口未连接）").arg(preset.fopoPumpCurrent, 0, 'f', 1);
+            skippedList << QString("FOPO泵: %1 mW（科乃特串口未连接）").arg(preset.fopoPumpCurrent, 0, 'f', 1);
         }
     }
 
-    // 4. 设置pump路主级泵功率（OHLD pumpIndex=2）
-    if (preset.mainPumpCurrent != 0) {
-        if (m_ohldPumps[2] && m_ohldPumps[2]->isOpen()) {
-            if (setOhldPumpCurrentSilent(2, preset.mainPumpCurrent)) {
-                successList << QString("主级泵: %1 mA").arg(preset.mainPumpCurrent, 0, 'f', 1);
-            } else {
-                failedList << QString("主级泵: %1 mA").arg(preset.mainPumpCurrent, 0, 'f', 1);
-            }
-        } else {
-            skippedList << QString("主级泵: %1 mA（OHLD串口未连接）").arg(preset.mainPumpCurrent, 0, 'f', 1);
-        }
-    }
-
-    // 5. 设置Stokes泵功率（OHLD pumpIndex=3）
+    // 4. 设置Stokes泵输出功率（科乃特 pumpIndex=3，单位mW）
+    // 注：振镜页不再控制 pump路主级泵（pumpIndex=2），mainPumpCurrent 字段保留为 0 不下发
     if (preset.stokesPumpCurrent != 0) {
         if (m_ohldPumps[3] && m_ohldPumps[3]->isOpen()) {
             if (setOhldPumpCurrentSilent(3, preset.stokesPumpCurrent)) {
-                successList << QString("Stokes泵: %1 mA").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+                successList << QString("Stokes泵: %1 mW").arg(preset.stokesPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("Stokes泵: %1 mA").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+                failedList << QString("Stokes泵: %1 mW").arg(preset.stokesPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("Stokes泵: %1 mA（OHLD串口未连接）").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+            skippedList << QString("Stokes泵: %1 mW（科乃特串口未连接）").arg(preset.stokesPumpCurrent, 0, 'f', 1);
         }
     }
 
@@ -3254,20 +3248,28 @@ void Integration::onDelayPresetDelayTimeoutGalvo()
 
 void Integration::on_btnStartPowerExecutionStage_clicked()
 {
-    // 加载预设
+    // 读取时间间隔（位移台页：spinBoxStageTimeInterval，单位秒，默认5）
+    m_powerPresetTimeIntervalStage = ui->spinBoxStageTimeInterval->value();
+
+    // 加载双数据源预设：
+    //   - StagePowerPreset：旋转台位置 + 4 路 OHLD 泵电流（mA）
+    //   - WavelengthTuningPreset：延迟线1（PS）+ 延迟线2（PS），按行索引与上面对齐
     m_currentPowerPresetsStage = loadPowerPresetsFromTableStage();
+    m_currentWavelengthTuningPresets = loadWavelengthTuningPresetsFromTableStage();
 
     if (m_currentPowerPresetsStage.isEmpty()) {
         QMessageBox::warning(this, "错误", "没有可执行的预设");
         return;
     }
 
-    // 智能检查
+    // 智能检查 - 分析预设中实际使用的设备
     bool needsStage = false;
     bool needsSeed = false;
     bool needsFOPO = false;
     bool needsMain = false;
     bool needsStokes = false;
+    bool needsDelay1 = false;   // 延迟线1（来自 WavelengthTuningPreset.delayLine1）
+    bool needsDelay2 = false;   // 延迟线2（来自 WavelengthTuningPreset.delayLine2）
 
     for (const StagePowerPreset &preset : m_currentPowerPresetsStage) {
         if (preset.stageAngle != 0 || preset.stagePosition != 0) {
@@ -3287,6 +3289,12 @@ void Integration::on_btnStartPowerExecutionStage_clicked()
         }
     }
 
+    // 检查延迟线需求（独立列表，按行索引对齐）
+    for (const WavelengthTuningPreset &wp : m_currentWavelengthTuningPresets) {
+        if (wp.delayLine1 != 0) needsDelay1 = true;
+        if (wp.delayLine2 != 0) needsDelay2 = true;
+    }
+
     QStringList missingDevices;
     if (needsStage && !m_stageController->isConnected()) {
         missingDevices << "位移台";
@@ -3302,6 +3310,12 @@ void Integration::on_btnStartPowerExecutionStage_clicked()
     }
     if (needsStokes && (!m_ohldPumps[3] || !m_ohldPumps[3]->isOpen())) {
         missingDevices << "Stokes泵（OHLD-4）";
+    }
+    if (needsDelay1 && !m_delayLine->isConnected()) {
+        missingDevices << "延迟线1";
+    }
+    if (needsDelay2 && !m_delayLine2->isConnected()) {
+        missingDevices << "延迟线2";
     }
 
     if (!missingDevices.isEmpty()) {
@@ -3325,8 +3339,11 @@ void Integration::on_btnStartPowerExecutionStage_clicked()
     executePowerPresetStage(0);
     m_powerPresetDelayTimerStage->start(m_powerPresetTimeIntervalStage * 1000);
 
-    updateStatusBar("开始执行功率预设（位移台页）");
-    qDebug() << "开始执行功率预设（位移台页），共" << m_currentPowerPresetsStage.size() << "个";
+    updateStatusBar(QString("开始执行波长调谐预设（共 %1 组，间隔 %2 秒）")
+                    .arg(m_currentPowerPresetsStage.size())
+                    .arg(m_powerPresetTimeIntervalStage));
+    qDebug() << "开始执行波长调谐预设（位移台页），功率预设:" << m_currentPowerPresetsStage.size()
+             << "组，延迟线预设:" << m_currentWavelengthTuningPresets.size() << "组";
 }
 
 void Integration::on_btnStopPowerExecutionStage_clicked()
@@ -3371,6 +3388,19 @@ void Integration::onPowerPresetDelayTimeoutStage()
         }
         if (preset.stokesPumpCurrent != 0 && (!m_ohldPumps[3] || !m_ohldPumps[3]->isOpen())) {
             disconnectedDevices << "Stokes泵（OHLD-4）";
+            hasDisconnectedDevice = true;
+        }
+    }
+
+    // 检查延迟线1/2 掉线状态（来自 m_currentWavelengthTuningPresets，按索引对齐）
+    if (m_currentPowerPresetIndexStage < m_currentWavelengthTuningPresets.size()) {
+        const WavelengthTuningPreset &wp = m_currentWavelengthTuningPresets[m_currentPowerPresetIndexStage];
+        if (wp.delayLine1 != 0 && !m_delayLine->isConnected()) {
+            disconnectedDevices << "延迟线1";
+            hasDisconnectedDevice = true;
+        }
+        if (wp.delayLine2 != 0 && !m_delayLine2->isConnected()) {
+            disconnectedDevices << "延迟线2";
             hasDisconnectedDevice = true;
         }
     }
@@ -3476,70 +3506,97 @@ void Integration::executePowerPresetStage(int index)
     QStringList failedList;
     QStringList skippedList;
 
-    // 1. 双台同步绝对位移（使用 stageAngle 字段作为位移量，单位 mm）
+    // 1. 双轴同步绝对位移（历史预设字段仍按 mm 保存；MT_API 接口接收 μm，因此此处 ×1000）
     double stageMm = (preset.stageAngle != 0) ? preset.stageAngle
                    : (preset.stagePosition != 0) ? preset.stagePosition : 0.0;
     if (stageMm != 0) {
+        const double stageUm = stageMm * 1000.0;
         if (m_stageController->isConnected()) {
-            if (m_stageController->moveAbsoluteDual(stageMm)) {
-                successList << QString("双台绝对位移: %1 mm").arg(stageMm, 0, 'f', 3);
+            if (m_stageController->moveAbsoluteDual(stageUm)) {
+                successList << QString("双轴绝对位移: %1 mm（%2 μm）").arg(stageMm, 0, 'f', 3).arg(stageUm, 0, 'f', 3);
             } else {
-                failedList << QString("双台绝对位移: %1 mm").arg(stageMm, 0, 'f', 3);
+                failedList << QString("双轴绝对位移: %1 mm（%2 μm）").arg(stageMm, 0, 'f', 3).arg(stageUm, 0, 'f', 3);
             }
         } else {
-            skippedList << QString("双台绝对位移: %1 mm（设备未连接）").arg(stageMm, 0, 'f', 3);
+            skippedList << QString("双轴绝对位移: %1 mm（设备未连接）").arg(stageMm, 0, 'f', 3);
         }
     }
 
-    // 3. 设置种子源泵功率（OHLD pumpIndex=0）
+    // 3. 设置种子源泵输出功率（科乃特 pumpIndex=0，单位mW）
     if (preset.seedPumpCurrent != 0) {
         if (m_ohldPumps[0] && m_ohldPumps[0]->isOpen()) {
             if (setOhldPumpCurrentSilent(0, preset.seedPumpCurrent)) {
-                successList << QString("种子源泵: %1 mA").arg(preset.seedPumpCurrent, 0, 'f', 1);
+                successList << QString("种子源泵: %1 mW").arg(preset.seedPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("种子源泵: %1 mA").arg(preset.seedPumpCurrent, 0, 'f', 1);
+                failedList << QString("种子源泵: %1 mW").arg(preset.seedPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("种子源泵: %1 mA（OHLD串口未连接）").arg(preset.seedPumpCurrent, 0, 'f', 1);
+            skippedList << QString("种子源泵: %1 mW（科乃特串口未连接）").arg(preset.seedPumpCurrent, 0, 'f', 1);
         }
     }
 
-    // 4. 设置FOPO/pump路预放泵功率（OHLD pumpIndex=1）
+    // 4. 设置pump路预放泵输出功率（科乃特 pumpIndex=1，单位mW）
     if (preset.fopoPumpCurrent != 0) {
         if (m_ohldPumps[1] && m_ohldPumps[1]->isOpen()) {
             if (setOhldPumpCurrentSilent(1, preset.fopoPumpCurrent)) {
-                successList << QString("FOPO泵: %1 mA").arg(preset.fopoPumpCurrent, 0, 'f', 1);
+                successList << QString("FOPO泵: %1 mW").arg(preset.fopoPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("FOPO泵: %1 mA").arg(preset.fopoPumpCurrent, 0, 'f', 1);
+                failedList << QString("FOPO泵: %1 mW").arg(preset.fopoPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("FOPO泵: %1 mA（OHLD串口未连接）").arg(preset.fopoPumpCurrent, 0, 'f', 1);
+            skippedList << QString("FOPO泵: %1 mW（科乃特串口未连接）").arg(preset.fopoPumpCurrent, 0, 'f', 1);
         }
     }
 
-    // 5. 设置pump路主级泵功率（OHLD pumpIndex=2）
+    // 5. 设置pump路主级泵输出功率（科乃特 pumpIndex=2，单位mW）
     if (preset.mainPumpCurrent != 0) {
         if (m_ohldPumps[2] && m_ohldPumps[2]->isOpen()) {
             if (setOhldPumpCurrentSilent(2, preset.mainPumpCurrent)) {
-                successList << QString("主级泵: %1 mA").arg(preset.mainPumpCurrent, 0, 'f', 1);
+                successList << QString("主级泵: %1 mW").arg(preset.mainPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("主级泵: %1 mA").arg(preset.mainPumpCurrent, 0, 'f', 1);
+                failedList << QString("主级泵: %1 mW").arg(preset.mainPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("主级泵: %1 mA（OHLD串口未连接）").arg(preset.mainPumpCurrent, 0, 'f', 1);
+            skippedList << QString("主级泵: %1 mW（科乃特串口未连接）").arg(preset.mainPumpCurrent, 0, 'f', 1);
         }
     }
 
-    // 6. 设置Stokes泵功率（OHLD pumpIndex=3）
+    // 6. 设置Stokes泵输出功率（科乃特 pumpIndex=3，单位mW）
     if (preset.stokesPumpCurrent != 0) {
         if (m_ohldPumps[3] && m_ohldPumps[3]->isOpen()) {
             if (setOhldPumpCurrentSilent(3, preset.stokesPumpCurrent)) {
-                successList << QString("Stokes泵: %1 mA").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+                successList << QString("Stokes泵: %1 mW").arg(preset.stokesPumpCurrent, 0, 'f', 1);
             } else {
-                failedList << QString("Stokes泵: %1 mA").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+                failedList << QString("Stokes泵: %1 mW").arg(preset.stokesPumpCurrent, 0, 'f', 1);
             }
         } else {
-            skippedList << QString("Stokes泵: %1 mA（OHLD串口未连接）").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+            skippedList << QString("Stokes泵: %1 mW（科乃特串口未连接）").arg(preset.stokesPumpCurrent, 0, 'f', 1);
+        }
+    }
+
+    // 6. 延迟线1 + 延迟线2 下发（数据来自 m_currentWavelengthTuningPresets，按行索引与 StagePowerPreset 对齐）
+    //    单位 PS；setDelayLineValue 内部包含归零→设置→查询的完整流程
+    if (index >= 0 && index < m_currentWavelengthTuningPresets.size()) {
+        const WavelengthTuningPreset &wp = m_currentWavelengthTuningPresets[index];
+
+        // 延迟线1 (m_delayLine, 设备ID=0x01)
+        if (wp.delayLine1 != 0) {
+            if (m_delayLine && m_delayLine->isConnected()) {
+                setDelayLineValue(m_delayLine, wp.delayLine1, "延迟线1");
+                successList << QString("延迟线1: %1 PS").arg(wp.delayLine1, 0, 'f', 2);
+            } else {
+                skippedList << QString("延迟线1: %1 PS（设备未连接）").arg(wp.delayLine1, 0, 'f', 2);
+            }
+        }
+
+        // 延迟线2 (m_delayLine2, 设备ID=0x02，独立串口)
+        if (wp.delayLine2 != 0) {
+            if (m_delayLine2 && m_delayLine2->isConnected()) {
+                setDelayLineValue(m_delayLine2, wp.delayLine2, "延迟线2");
+                successList << QString("延迟线2: %1 PS").arg(wp.delayLine2, 0, 'f', 2);
+            } else {
+                skippedList << QString("延迟线2: %1 PS（设备未连接）").arg(wp.delayLine2, 0, 'f', 2);
+            }
         }
     }
 
@@ -3748,16 +3805,17 @@ void Integration::executeDelayPreset(PresetPageType pageType, int index)
             }
         }
     } else {
-        // 位移台页：双台同步绝对位移
+        // 位移台页：双轴同步绝对位移（历史延迟预设字段仍按 mm，MT_API 调用前转换为 μm）
         if (preset.stagePosition != 0) {
+            const double stageUm = preset.stagePosition * 1000.0;
             if (m_stageController->isConnected()) {
-                if (m_stageController->moveAbsoluteDual(preset.stagePosition)) {
-                    successList << QString("双台绝对位移: %1 mm").arg(preset.stagePosition, 0, 'f', 3);
+                if (m_stageController->moveAbsoluteDual(stageUm)) {
+                    successList << QString("双轴绝对位移: %1 mm（%2 μm）").arg(preset.stagePosition, 0, 'f', 3).arg(stageUm, 0, 'f', 3);
                 } else {
-                    failedList << QString("双台绝对位移: %1 mm").arg(preset.stagePosition, 0, 'f', 3);
+                    failedList << QString("双轴绝对位移: %1 mm（%2 μm）").arg(preset.stagePosition, 0, 'f', 3).arg(stageUm, 0, 'f', 3);
                 }
             } else {
-                skippedList << QString("双台绝对位移: %1 mm（设备未连接）").arg(preset.stagePosition, 0, 'f', 3);
+                skippedList << QString("双轴绝对位移: %1 mm（设备未连接）").arg(preset.stagePosition, 0, 'f', 3);
             }
         }
     }
@@ -3983,10 +4041,10 @@ void Integration::showPowerPresetEditDialog()
     // 创建垂直布局
     QVBoxLayout *mainLayout = new QVBoxLayout(dialog);
 
-    // 创建表格
+    // 创建表格（OHLD 三泵：种子源 / FOPO预放 / Stokes，与主表 5 列一致）
     QTableWidget *tableWidget = new QTableWidget(dialog);
-    tableWidget->setColumnCount(6);
-    tableWidget->setHorizontalHeaderLabels({"振镜起始(deg)", "振镜结束(deg)", "种子源泵(mA)", "预放泵(mA)", "主级泵(mA)", "Stokes泵(mA)"});
+    tableWidget->setColumnCount(5);
+    tableWidget->setHorizontalHeaderLabels({"振镜起始(deg)", "振镜结束(deg)", "种子源泵(mA)", "FOPO泵(mA)", "Stokes泵(mA)"});
     tableWidget->setEditTriggers(QAbstractItemView::AllEditTriggers);
     tableWidget->setAlternatingRowColors(true);
 
@@ -4024,24 +4082,21 @@ void Integration::showPowerPresetEditDialog()
 
     // 连接信号槽
     connect(btnAdd, &QPushButton::clicked, [=]() {
+        // 振镜页 5 列：振镜起始 / 振镜结束 / 种子源泵 / FOPO泵 / Stokes泵
         int row = tableWidget->rowCount();
         tableWidget->insertRow(row);
-        tableWidget->setItem(row, 0, new QTableWidgetItem(QString::number(row + 1)));
+        tableWidget->setItem(row, 0, new QTableWidgetItem("0"));
         tableWidget->setItem(row, 1, new QTableWidgetItem("0"));
         tableWidget->setItem(row, 2, new QTableWidgetItem("0"));
         tableWidget->setItem(row, 3, new QTableWidgetItem("0"));
         tableWidget->setItem(row, 4, new QTableWidgetItem("0"));
-        tableWidget->setItem(row, 5, new QTableWidgetItem("0"));
     });
 
     connect(btnDelete, &QPushButton::clicked, [=]() {
+        // 振镜页 5 列均为业务数据（无序号列），删除后无需重写第 0 列
         int currentRow = tableWidget->currentRow();
         if (currentRow >= 0) {
             tableWidget->removeRow(currentRow);
-            // 更新序号
-            for (int i = 0; i < tableWidget->rowCount(); ++i) {
-                tableWidget->setItem(i, 0, new QTableWidgetItem(QString::number(i + 1)));
-            }
         }
     });
 
